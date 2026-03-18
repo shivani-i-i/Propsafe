@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PropSafe — AI Property Fraud Protection for India</title>
+  <meta name="description" content="PropSafe uses AI to detect property fraud, connect buyers with affordable verified lawyers, and predict property prices — protecting Indian middle-class families." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     NAVBAR
+════════════════════════════════════════ -->
+<nav id="navbar">
+  <div class="logo">
+    <span class="prop">Prop</span><span class="safe">Safe</span>
+    <span class="logo-dot"></span>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="fraud" id="tab-fraud" onclick="switchTab('fraud'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+      🛡️ <span class="tab-label">Fraud Detection</span>
+    </button>
+    <button class="nav-tab" data-tab="lawyers" id="tab-lawyers" onclick="switchTab('lawyers'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+      ⚖️ <span class="tab-label">Lawyer Marketplace</span>
+    </button>
+    <button class="nav-tab" data-tab="price" id="tab-price" onclick="switchTab('price'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+      📈 <span class="tab-label">Price Predictor</span>
+    </button>
+  </div>
+
+  <div class="nav-demo-pill">
+    <span class="demo-dot"></span>
+    DEMO
+  </div>
+</nav>
+
+
+<!-- ═══════════════════════════════════════
+     HERO
+════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-noise"></div>
+  <div class="hero-badge">
+    <span class="pill pill-teal animate-float">✦ PropSafe Hackathon Demo</span>
+  </div>
+
+  <h1 class="hero-headline">
+    Stop Property Fraud<br>
+    Before It <span class="hero-highlight">Destroys</span> You
+  </h1>
+
+  <p class="hero-sub">
+    AI fraud detection, verified lawyer marketplace, and price intelligence —
+    one complete ecosystem protecting Indian families.
+  </p>
+
+  <div class="hero-sdgs">
+    <span class="pill pill-neutral">🏙️ SDG 11 Sustainable Cities</span>
+    <span class="pill pill-neutral">⚖️ SDG 16 Peace &amp; Justice</span>
+    <span class="pill pill-neutral">🤝 SDG 10 Reduced Inequalities</span>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════ -->
+<main class="main-container">
+
+  <!-- ═══ TAB 1: FRAUD DETECTION ═══ -->
+  <section class="tab-content active" id="content-fraud">
+
+    <!-- Pipeline -->
+    <div class="card" style="margin-bottom:24px;padding:20px 16px;">
+      <div class="section-title">
+        🔬 AI Analysis Pipeline
+        <span class="pill pill-teal" style="font-size:10px;font-weight:700;">LIVE</span>
+      </div>
+      <div class="section-sub">Each document goes through 5 automated verification stages.</div>
+
+      <div class="pipeline-container">
+        <div class="pipeline-step" id="step-upload">
+          <div class="step-num">1</div>
+          <div class="step-icon">📄</div>
+          <div class="step-label">Upload Docs</div>
+        </div>
+        <div class="pipeline-arrow" id="arrow-0">›</div>
+
+        <div class="pipeline-step" id="step-ocr">
+          <div class="step-num">2</div>
+          <div class="step-icon">🔍</div>
+          <div class="step-label">OCR Scan</div>
+        </div>
+        <div class="pipeline-arrow" id="arrow-1">›</div>
+
+        <div class="pipeline-step" id="step-ml">
+          <div class="step-num">3</div>
+          <div class="step-icon">🤖</div>
+          <div class="step-label">ML Model</div>
+        </div>
+        <div class="pipeline-arrow" id="arrow-2">›</div>
+
+        <div class="pipeline-step" id="step-score">
+          <div class="step-num">4</div>
+          <div class="step-icon">📊</div>
+          <div class="step-label">Risk Score</div>
+        </div>
+        <div class="pipeline-arrow" id="arrow-3">›</div>
+
+        <div class="pipeline-step" id="step-report">
+          <div class="step-num">5</div>
+          <div class="step-icon">📋</div>
+          <div class="step-label">Report</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Zone -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title">📂 Upload Property Documents</div>
+      <div class="section-sub">Accepted: Title Deed, Encumbrance Certificate, Sale Agreement, Patta, Layout Approval</div>
+
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple />
+        <div class="upload-icon">🗂️</div>
+        <div class="upload-title">Drop property documents here</div>
+        <div class="upload-sub">or click to browse your files</div>
+        <div class="upload-accepted">Supports PDF, JPG, PNG, DOC up to 10 MB each</div>
+        <div class="uploaded-files" id="uploadedFiles"></div>
+      </div>
+    </div>
+
+    <!-- Property Details Form -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title">📝 Property Details</div>
+      <div class="section-sub">Fill in as many details as you know — more data gives a more accurate fraud score.</div>
+
+      <div class="form-grid">
+        <!-- Property Type -->
+        <div class="form-group">
+          <label class="form-label" for="propertyType">🏠 Property Type</label>
+          <select class="form-control" id="propertyType">
+            <option value="apartment">Residential Apartment</option>
+            <option value="house">Independent House</option>
+            <option value="land">Agricultural Land</option>
+            <option value="commercial">Commercial Plot</option>
+            <option value="builder-floor">Builder Floor</option>
+          </select>
+        </div>
+
+        <!-- Location -->
+        <div class="form-group">
+          <label class="form-label" for="location">📍 City &amp; Location</label>
+          <input type="text" class="form-control" id="location"
+                 placeholder="e.g. Velachery, Chennai" />
+        </div>
+
+        <!-- Seller Name -->
+        <div class="form-group">
+          <label class="form-label" for="sellerName">👤 Seller Full Name</label>
+          <input type="text" class="form-control" id="sellerName"
+                 placeholder="As on Aadhaar / PAN card" />
+        </div>
+
+        <!-- Previous Owners -->
+        <div class="form-group">
+          <label class="form-label" for="previousOwners">🔗 Number of Previous Owners</label>
+          <input type="number" class="form-control" id="previousOwners"
+                 placeholder="e.g. 3" min="0" max="50" />
+        </div>
+
+        <!-- Ownership Transfers -->
+        <div class="form-group">
+          <label class="form-label" for="ownershipTransfers">
+            🔄 Ownership Transfers in Last 2 Years
+            <span class="pill pill-red" style="font-size:10px;">Red Flag if ≥5</span>
+          </label>
+          <input type="number" class="form-control" id="ownershipTransfers"
+                 placeholder="e.g. 2" min="0" max="30" />
+        </div>
+
+        <!-- Property Value -->
+        <div class="form-group">
+          <label class="form-label" for="propertyValue">💰 Property Value (₹ Lakhs)</label>
+          <input type="number" class="form-control" id="propertyValue"
+                 placeholder="e.g. 65" min="1" />
+        </div>
+
+        <!-- Seller Income -->
+        <div class="form-group">
+          <label class="form-label" for="sellerIncome">
+            💵 Seller Annual Income (₹ Lakhs)
+            <span class="pill pill-amber" style="font-size:10px;">Benami signal</span>
+          </label>
+          <input type="number" class="form-control" id="sellerIncome"
+                 placeholder="e.g. 8" min="0" />
+        </div>
+
+        <!-- Encumbrance Status -->
+        <div class="form-group">
+          <label class="form-label" for="encumbranceStatus">📜 Encumbrance Certificate Status</label>
+          <select class="form-control" id="encumbranceStatus">
+            <option value="clean">✅ Clean — No Dues</option>
+            <option value="loan">⚠️ Has Pending Loans</option>
+            <option value="disputed">🚫 Disputed / Court Cases</option>
+            <option value="unavailable">❓ Not Available</option>
+          </select>
+        </div>
+
+        <!-- Additional Details -->
+        <div class="form-group full">
+          <label class="form-label" for="additionalDetails">📋 Additional Details or Suspicions</label>
+          <textarea class="form-control" id="additionalDetails"
+                    placeholder="Describe anything that felt unusual — seller was evasive, documents looked photocopied, claimed NRI seller, price much below market, etc."
+                    rows="3"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;text-align:center;">
+        <button class="btn btn-primary btn-lg" id="analyzeBtn" style="min-width:320px;">
+          🔍 Analyze Property — Get Fraud Risk Score
+        </button>
+      </div>
+    </div>
+
+    <!-- Result Area -->
+    <div id="fraudResult"></div>
+
+  </section><!-- /content-fraud -->
+
+
+  <!-- ═══ TAB 2: LAWYER MARKETPLACE ═══ -->
+  <section class="tab-content" id="content-lawyers">
+
+    <!-- Cost Compare Bar -->
+    <div class="cost-compare">
+      <div class="cost-seg">
+        <div class="cost-seg-label">Traditional Rate</div>
+        <div class="cost-seg-value cost-seg-old">₹5,000+</div>
+        <div style="font-size:12px;color:var(--text-muted);">per consultation</div>
+      </div>
+      <div class="cost-arrow">→</div>
+      <div class="cost-seg">
+        <div class="cost-seg-label">PropSafe Rate</div>
+        <div class="cost-seg-value cost-seg-new">₹500 – ₹1,000</div>
+        <div style="font-size:12px;color:var(--text-muted);">per consultation</div>
+      </div>
+      <div class="cost-save">
+        <div class="cost-save-pct">80%</div>
+        <div class="cost-save-label">Save up to</div>
+      </div>
+    </div>
+
+    <!-- Filter Row -->
+    <div class="filter-row">
+      <select class="form-control" id="cityFilter" style="min-width:150px;">
+        <option value="all">All Cities</option>
+        <option value="Chennai">Chennai</option>
+        <option value="Mumbai">Mumbai</option>
+        <option value="Delhi">Delhi</option>
+        <option value="Bangalore">Bangalore</option>
+        <option value="Hyderabad">Hyderabad</option>
+        <option value="Pune">Pune</option>
+      </select>
+
+      <select class="form-control" id="specFilter" style="min-width:190px;">
+        <option value="all">All Specializations</option>
+        <option value="Title Deed">Title Deed Verification</option>
+        <option value="Benami">Benami Cases</option>
+        <option value="RERA">RERA Disputes</option>
+        <option value="Land Survey">Land Survey</option>
+        <option value="Civil">Civil Disputes</option>
+      </select>
+
+      <button class="btn btn-primary" id="findLawyersBtn">🔍 Find Lawyers</button>
+    </div>
+
+    <!-- Lawyers Grid -->
+    <div class="lawyers-grid" id="lawyersGrid">
+      <div class="spinner-overlay" style="grid-column:1/-1;">
+        <div class="spinner"></div>
+        <div class="spinner-text">Loading verified lawyers…</div>
+      </div>
+    </div>
+
+    <!-- AI Legal Chat -->
+    <div class="card" style="margin-top:8px;padding:0;overflow:hidden;">
+      <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);">
+        <div class="section-title" style="margin-bottom:2px;">🤖 PropSafe Legal AI</div>
+        <div class="section-sub" style="margin-bottom:0;">Ask anything about property law — title deeds, RERA, fraud, encumbrance, registration.</div>
+      </div>
+
+      <div class="chat-container" style="border:none;border-radius:0;">
+        <div class="chat-header">
+          <span class="chat-status-dot"></span>
+          <span class="chat-title">PropSafe Legal AI</span>
+          <span class="chat-subtitle">Powered by Claude AI · Instant Answers</span>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="chatInput"
+                 placeholder="Ask about title deeds, RERA, benami, registration…" />
+          <button class="btn btn-primary btn-sm" id="chatSend">Send</button>
+        </div>
+      </div>
+    </div>
+
+  </section><!-- /content-lawyers -->
+
+
+  <!-- ═══ TAB 3: PRICE PREDICTOR ═══ -->
+  <section class="tab-content" id="content-price">
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title">📈 Property Price Appreciation Predictor</div>
+      <div class="section-sub">AI-powered valuation using 10 years of historical data and upcoming infrastructure projects.</div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="locality">📍 Locality Name</label>
+          <input type="text" class="form-control" id="locality"
+                 placeholder="e.g. Velachery, Chennai" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="currentMarketValue">💰 Current Market Value (₹ Lakhs)</label>
+          <input type="number" class="form-control" id="currentMarketValue"
+                 placeholder="e.g. 50" min="1" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pricePropertyType">🏠 Property Type</label>
+          <select class="form-control" id="pricePropertyType">
+            <option>Residential Apartment</option>
+            <option>Independent House</option>
+            <option>Agricultural Land</option>
+            <option>Commercial Plot</option>
+            <option>Builder Floor</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="askingPrice">🏷️ Seller Asking Price (₹ Lakhs)</label>
+          <input type="number" class="form-control" id="askingPrice"
+                 placeholder="e.g. 55" min="1" />
+        </div>
+      </div>
+
+      <div style="margin-top:24px;text-align:center;">
+        <button class="btn btn-primary btn-lg" id="predictBtn" style="min-width:280px;">
+          📈 Generate Price Report
+        </button>
+      </div>
+    </div>
+
+    <!-- Result injected here -->
+    <div id="priceResult"></div>
+
+  </section><!-- /content-price -->
+
+</main><!-- /main-container -->
+
+
+<!-- ═══════════════════════════════════════
+     FOOTER
+════════════════════════════════════════ -->
+<footer style="text-align:center;padding:24px;border-top:1px solid var(--border);color:var(--text-muted);font-size:13px;">
+  <span style="color:var(--teal);font-family:'Syne',sans-serif;font-weight:700;">Prop</span><span style="font-family:'Syne',sans-serif;font-weight:700;">Safe</span>
+  &nbsp;·&nbsp; Protecting Indian families from property fraud &nbsp;·&nbsp;
+  SDG 11 · SDG 16 · SDG 10 &nbsp;·&nbsp; Hackathon Demo 2026
+</footer>
+
+
+<!-- ═══════════════════════════════════════
+     SCRIPTS (ES Modules)
+════════════════════════════════════════ -->
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>
