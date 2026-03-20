@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(node server.js)",
+      "Bash(node -e \"import\\(''./server.js''\\).catch\\(e => console.error\\(e\\)\\)\")",
+      "Bash(netstat -ano)",
+      "Read(//c/Users/seema/Downloads/PropSafe/backend/**)",
+      "Bash(taskkill //F //IM node.exe)"
+    ]
+  }
+}

@@ -2,6 +2,8 @@
  * PropSafe — Price Predictor Module (Tab 3)
  */
 import { predictPrice, getMockPriceResult } from './api.js';
+import { matchLoanEligibility, getMockLoanOffers } from './api.js';
+import { showToast } from './toast.js';
 
 let priceChart = null;
 
@@ -17,6 +19,7 @@ export async function runPricePredictor() {
   };
 
   if (!formData.locality.trim()) {
+    showToast('Please enter the locality name.', 'warning');
     resultArea.innerHTML = `
       <div class="error-card animate-fade-in-up">
         <div class="error-icon">⚠️</div>
@@ -31,20 +34,96 @@ export async function runPricePredictor() {
   // Loading
   btn.disabled = true;
   btn.innerHTML = `<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div> Generating Report…`;
-  resultArea.innerHTML = `<div class="spinner-overlay"><div class="spinner"></div><div class="spinner-text">Analysing market data and infrastructure trends…</div></div>`;
+  resultArea.innerHTML = `
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line w-55"></div>
+      <div class="skeleton skeleton-line w-100"></div>
+      <div class="skeleton skeleton-line w-85"></div>
+      <div class="skeleton skeleton-line w-70"></div>
+      <div class="skeleton skeleton-line w-40"></div>
+    </div>
+    <div class="skeleton-grid" style="margin-top:12px;">
+      ${Array.from({ length: 4 }).map(() => `
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-line w-70"></div>
+          <div class="skeleton skeleton-line w-40"></div>
+        </div>
+      `).join('')}
+    </div>`;
 
   let data;
   try {
     data = await predictPrice(formData);
+    showToast('Price report generated successfully.', 'success');
   } catch (_) {
     await sleep(1800);
     data = getMockPriceResult(formData);
+    showToast('Prediction service unavailable. Showing fallback report.', 'warning');
   }
 
   btn.disabled = false;
   btn.innerHTML = `📈 Generate Price Report`;
 
   renderPriceResult(data, resultArea, formData);
+}
+
+export async function runLoanMatcher() {
+  const incomeInput = document.getElementById('buyerAnnualIncome');
+  const localityInput = document.getElementById('locality');
+  const currentValueInput = document.getElementById('currentMarketValue');
+  const resultArea = document.getElementById('loanMatchResult');
+  const btn = document.getElementById('loanMatchBtn');
+
+  const buyerIncome = Number(incomeInput?.value || 0);
+  const propertyValueLakhs = Number(currentValueInput?.value || 0);
+  const city = (localityInput?.value || '').split(',').pop()?.trim() || 'Chennai';
+
+  if (!buyerIncome || !propertyValueLakhs) {
+    showToast('Enter annual income and market value first.', 'warning');
+    resultArea.innerHTML = `
+      <div class="error-card animate-fade-in-up">
+        <div class="error-icon">⚠️</div>
+        <div>
+          <div class="error-title">Missing Information</div>
+          <div class="error-msg">Please enter buyer annual income and current market value first.</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner" style="width:16px;height:16px;border-width:2px;"></div> Checking...`;
+  resultArea.innerHTML = `<div class="spinner-overlay"><div class="spinner"></div><div class="spinner-text">Matching banks for this profile...</div></div>`;
+
+  let data;
+  try {
+    data = await matchLoanEligibility({
+      propertyValue: propertyValueLakhs * 100000,
+      buyerIncome,
+      city
+    });
+    showToast('Loan eligibility matched successfully.', 'success');
+  } catch (_) {
+    await sleep(900);
+    data = getMockLoanOffers(propertyValueLakhs * 100000, buyerIncome, city);
+    showToast('Loan API unavailable. Showing fallback offers.', 'warning');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Check Loan Eligibility';
+
+  const cards = (data.offers || []).map((offer) => `
+    <div class="loan-card animate-fade-in-up">
+      <div class="loan-head">🏦 ${offer.bankName}</div>
+      <div class="loan-line"><span>Interest Rate</span><strong>${offer.interestRate}%</strong></div>
+      <div class="loan-line"><span>Max Loan</span><strong>₹${Number(offer.maxLoanAmount || 0).toLocaleString('en-IN')}</strong></div>
+      <div class="loan-line"><span>Monthly EMI</span><strong>₹${Number(offer.emiEstimate || 0).toLocaleString('en-IN')}</strong></div>
+      <div class="loan-line"><span>Eligibility</span><strong>${offer.loanEligibility}</strong></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;">Apply Now</button>
+    </div>
+  `).join('');
+
+  resultArea.innerHTML = `<div class="loan-grid">${cards}</div>`;
 }
 
 function renderPriceResult(data, container, formData) {

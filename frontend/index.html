@@ -30,14 +30,30 @@
   </div>
 
   <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="fraud" id="tab-fraud" onclick="switchTab('fraud'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
-      🛡️ <span class="tab-label">Fraud Detection</span>
+    <button class="nav-tab active" data-tab="home" id="tab-home" onclick="switchTab('home'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+      <span class="nav-icon">🏠</span>
+      <span class="tab-label">Dashboard</span>
+      <span class="mobile-nav-label">Home</span>
+    </button>
+    <button class="nav-tab" data-tab="fraud" id="tab-fraud" onclick="switchTab('fraud'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+      <span class="nav-icon">🛡️</span>
+      <span class="tab-label">Fraud Detection</span>
+      <span class="mobile-nav-label">Fraud Check</span>
     </button>
     <button class="nav-tab" data-tab="lawyers" id="tab-lawyers" onclick="switchTab('lawyers'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
-      ⚖️ <span class="tab-label">Lawyer Marketplace</span>
+      <span class="nav-icon">⚖️</span>
+      <span class="tab-label">Lawyer Marketplace</span>
+      <span class="mobile-nav-label">Lawyers</span>
     </button>
     <button class="nav-tab" data-tab="price" id="tab-price" onclick="switchTab('price'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
-      📈 <span class="tab-label">Price Predictor</span>
+      <span class="nav-icon">📈</span>
+      <span class="tab-label">Price Predictor</span>
+      <span class="mobile-nav-label">Price</span>
+    </button>
+    <button class="nav-tab" data-tab="verify" id="tab-verify" onclick="switchTab('verify'); document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+      <span class="nav-icon">✅</span>
+      <span class="tab-label">Verify Property</span>
+      <span class="mobile-nav-label">Verify</span>
     </button>
   </div>
 
@@ -80,8 +96,35 @@
 ════════════════════════════════════════ -->
 <main class="main-container">
 
+  <!-- ═══ HOME DASHBOARD ═══ -->
+  <section class="tab-content active" id="content-home">
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title">📊 PropSafe Dashboard</div>
+      <div class="section-sub">Real-time platform activity snapshot.</div>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <div class="dashboard-label">Total Scans Done</div>
+          <div class="dashboard-value" id="counterScans">0</div>
+        </div>
+        <div class="dashboard-card">
+          <div class="dashboard-label">Fraud Cases Detected</div>
+          <div class="dashboard-value" id="counterFraud">0</div>
+        </div>
+        <div class="dashboard-card">
+          <div class="dashboard-label">Lawyers Connected</div>
+          <div class="dashboard-value" id="counterLawyers">0</div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;text-align:center;">
+        <button class="btn btn-primary btn-lg" id="startScanBtn">🚀 Start New Scan</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ TAB 1: FRAUD DETECTION ═══ -->
-  <section class="tab-content active" id="content-fraud">
+  <section class="tab-content" id="content-fraud">
 
     <!-- Pipeline -->
     <div class="card" style="margin-bottom:24px;padding:20px 16px;">
@@ -170,8 +213,15 @@
 
         <!-- Seller Name -->
         <div class="form-group">
-          <label class="form-label" for="sellerName">👤 Seller Full Name</label>
+          <label class="form-label" for="sellerName">👤 Seller Full Name <span class="pill pill-green autofill-badge" id="badge-sellerName">Auto-filled from document</span></label>
           <input type="text" class="form-control" id="sellerName"
+                 placeholder="As on Aadhaar / PAN card" />
+        </div>
+
+        <!-- Buyer Name -->
+        <div class="form-group">
+          <label class="form-label" for="buyerName">🧾 Buyer Full Name <span class="pill pill-green autofill-badge" id="badge-buyerName">Auto-filled from document</span></label>
+          <input type="text" class="form-control" id="buyerName"
                  placeholder="As on Aadhaar / PAN card" />
         </div>
 
@@ -194,9 +244,16 @@
 
         <!-- Property Value -->
         <div class="form-group">
-          <label class="form-label" for="propertyValue">💰 Property Value (₹ Lakhs)</label>
+          <label class="form-label" for="propertyValue">💰 Property Value (₹ Lakhs) <span class="pill pill-green autofill-badge" id="badge-propertyValue">Auto-filled from document</span></label>
           <input type="number" class="form-control" id="propertyValue"
                  placeholder="e.g. 65" min="1" />
+        </div>
+
+        <!-- Transaction Date -->
+        <div class="form-group">
+          <label class="form-label" for="transactionDate">📅 Transaction Date <span class="pill pill-green autofill-badge" id="badge-transactionDate">Auto-filled from document</span></label>
+          <input type="text" class="form-control" id="transactionDate"
+                 placeholder="DD/MM/YYYY" />
         </div>
 
         <!-- Seller Income -->
@@ -274,6 +331,7 @@
         <option value="Bangalore">Bangalore</option>
         <option value="Hyderabad">Hyderabad</option>
         <option value="Pune">Pune</option>
+        <option value="Kolkata">Kolkata</option>
       </select>
 
       <select class="form-control" id="specFilter" style="min-width:190px;">
@@ -369,7 +427,47 @@
     <!-- Result injected here -->
     <div id="priceResult"></div>
 
+    <div class="card" style="margin-top:20px;">
+      <div class="section-title">🏦 Loan Matcher</div>
+      <div class="section-sub">Find eligible home loan offers in seconds.</div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="buyerAnnualIncome">💵 Buyer Annual Income (₹)</label>
+          <input type="number" class="form-control" id="buyerAnnualIncome" placeholder="e.g. 1800000" min="1" />
+        </div>
+      </div>
+
+      <div style="margin-top:16px;text-align:center;">
+        <button class="btn btn-primary" id="loanMatchBtn">Check Loan Eligibility</button>
+      </div>
+
+      <div id="loanMatchResult" style="margin-top:16px;"></div>
+    </div>
+
   </section><!-- /content-price -->
+
+  <!-- ═══ TAB 4: VERIFY PROPERTY ═══ -->
+  <section class="tab-content" id="content-verify">
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title">✅ Municipal Verification</div>
+      <div class="section-sub">Check key municipal indicators with one registration number.</div>
+
+      <div class="form-grid">
+        <div class="form-group full">
+          <label class="form-label" for="registrationNumber">🏢 Property Registration Number</label>
+          <input type="text" class="form-control" id="registrationNumber" placeholder="e.g. TN-RERA-2024-00123" />
+        </div>
+      </div>
+
+      <div style="margin-top:16px;text-align:center;">
+        <button class="btn btn-primary" id="verifyPropertyBtn">Verify Now</button>
+      </div>
+
+      <div id="verifyResult" style="margin-top:20px;"></div>
+    </div>
+
+  </section><!-- /content-verify -->
 
 </main><!-- /main-container -->
 
@@ -387,6 +485,7 @@
 <!-- ═══════════════════════════════════════
      SCRIPTS (ES Modules)
 ════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script type="module" src="js/app.js"></script>
 
 </body>

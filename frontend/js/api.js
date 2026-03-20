@@ -8,23 +8,95 @@ const API_BASE = 'http://localhost:3000';
 
 /* ─── Generic request helper ─── */
 async function apiRequest(method, path, body = null) {
-  const options = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
-  if (body) options.body = JSON.stringify(body);
+  const options = { method, headers: {} };
+
+  if (body instanceof FormData) {
+    options.body = body;
+  } else if (body) {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(body);
+  }
 
   const response = await fetch(`${API_BASE}${path}`, options);
+  const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     let errMsg = `Server error ${response.status}`;
-    try {
-      const errData = await response.json();
-      errMsg = errData.message || errMsg;
-    } catch (_) {}
+    errMsg = payload?.error?.message || payload?.message || errMsg;
     throw new Error(errMsg);
   }
-  return response.json();
+  return payload?.success && payload?.data !== undefined ? payload.data : payload;
+}
+
+function titleCaseRisk(riskLevel = '') {
+  const normalized = String(riskLevel).toLowerCase();
+  return normalized === 'high' ? 'high' : normalized === 'medium' ? 'medium' : 'low';
+}
+
+function normalizeFraudResult(data = {}) {
+  if (data.score !== undefined) return data;
+
+  const riskLevel = titleCaseRisk(data.riskLevel);
+  return {
+    score: Number(data.riskScore) || 0,
+    riskLevel,
+    riskLabel: `${riskLevel.toUpperCase()} RISK`,
+    summary: data.summary || 'Analysis completed.',
+    flags: (data.redFlags || []).map((flag) => ({
+      severity: titleCaseRisk(flag.severity),
+      name: flag.issue || 'Risk Marker',
+      desc: flag.detail || ''
+    })),
+    positives: (data.positives || []).map((item) => ({
+      name: 'Positive Signal',
+      desc: item
+    })),
+    recommendation: data.recommendation || 'Consult a verified lawyer before proceeding.',
+    immediateAction: data.immediateAction || 'Pause and verify key ownership records.'
+  };
+}
+
+function normalizeLawyer(lawyer = {}) {
+  return {
+    ...lawyer,
+    initial: lawyer.initial || String(lawyer.name || '?').charAt(0).toUpperCase(),
+    tags: lawyer.tags || [lawyer.specialization || 'Property Law'],
+    reviews: lawyer.reviews || Math.floor((lawyer.rating || 4.5) * 50),
+    price: lawyer.price || lawyer.fee || 800,
+    oldPrice: lawyer.oldPrice || 5000
+  };
+}
+
+function normalizePriceResult(data = {}, formData = {}) {
+  if (data.historical && data.predicted) return data;
+
+  const historical = (data.historicalData || []).map((row) => ({
+    year: row.year,
+    value: Math.round((Number(row.price) / 100000) * 10) / 10
+  }));
+
+  const predicted = (data.predictions || []).map((row) => ({
+    year: row.year,
+    value: Math.round((Number(row.price) / 100000) * 10) / 10
+  }));
+
+  const currentValueLakhs = Number(formData.currentValue || historical.at(-1)?.value || 50);
+  const predicted2026 = predicted.find((x) => x.year === 2026)?.value || currentValueLakhs;
+  const overpricedByLakhs = Math.round((Number(data.overpricedBy || 0) / 100000) * 10) / 10;
+
+  return {
+    historical,
+    predicted,
+    stats: {
+      currentValue: currentValueLakhs,
+      predicted2026,
+      appreciation: Number(data.appreciationPercent || 0),
+      overpricedBy: overpricedByLakhs > 0 ? overpricedByLakhs : 0
+    },
+    insight: `Projected appreciation is ${Number(data.appreciationPercent || 0)}% by 2026 based on current market trend for ${formData.locality || 'this locality'}.`,
+    negotiation: `Open negotiation near ₹${Math.round((Number(data.negotiationOpen || 0) / 100000) * 10) / 10}L and settle up to ₹${Math.round((Number(data.negotiationMax || 0) / 100000) * 10) / 10}L if documents are clean.`,
+    infraTags: ['Municipal Growth Zone', 'Transit Access', 'School Cluster']
+  };
 }
 
 /* ─── Fraud Detection ─── */
@@ -34,7 +106,18 @@ async function apiRequest(method, path, body = null) {
  * @returns {Promise<Object>} - { score, riskLevel, summary, flags, positives, recommendation, immediateAction }
  */
 export async function analyzeFraud(payload) {
-  return apiRequest('POST', '/api/fraud/analyze', payload);
+  const data = await apiRequest('POST', '/api/fraud/analyze', {
+    propertyType: payload.propertyType,
+    city: payload.location,
+    sellerName: payload.sellerName,
+    previousOwners: payload.previousOwners,
+    transfersLastTwoYears: payload.ownershipTransfers,
+    propertyValue: Number(payload.propertyValue || 0) * 100000,
+    sellerIncome: Number(payload.sellerIncome || 0) * 100000,
+    encumbranceStatus: payload.encumbranceStatus,
+    additionalDetails: payload.additionalDetails
+  });
+  return normalizeFraudResult(data);
 }
 
 /* ─── Lawyer Marketplace ─── */
@@ -46,10 +129,11 @@ export async function analyzeFraud(payload) {
  */
 export async function fetchLawyers(city = '', specialization = '') {
   const params = new URLSearchParams();
-  if (city) params.set('city', city);
+  if (city && city !== 'all') params.set('city', city);
   if (specialization) params.set('specialization', specialization);
   const qs = params.toString();
-  return apiRequest('GET', `/api/lawyers${qs ? '?' + qs : ''}`);
+  const data = await apiRequest('GET', `/api/lawyers${qs ? '?' + qs : ''}`);
+  return Array.isArray(data) ? data.map(normalizeLawyer) : [];
 }
 
 /* ─── Price Prediction ─── */
@@ -59,7 +143,13 @@ export async function fetchLawyers(city = '', specialization = '') {
  * @returns {Promise<Object>} - { historical, predicted, stats, insight, negotiation, infraTags }
  */
 export async function predictPrice(payload) {
-  return apiRequest('POST', '/api/price/predict', payload);
+  const data = await apiRequest('POST', '/api/price/predict', {
+    locality: payload.locality,
+    currentPrice: Number(payload.currentValue) * 100000,
+    propertyType: payload.propertyType,
+    askingPrice: Number(payload.askingPrice) * 100000
+  });
+  return normalizePriceResult(data, payload);
 }
 
 /* ─── Legal AI Chat ─── */
@@ -69,7 +159,100 @@ export async function predictPrice(payload) {
  * @returns {Promise<Object>} - { reply: string }
  */
 export async function sendChatMessage(messages) {
-  return apiRequest('POST', '/api/chat', { messages });
+  const userText = Array.isArray(messages)
+    ? messages.filter(m => m.role === 'user').at(-1)?.content || ''
+    : String(messages || '');
+  const data = await apiRequest('POST', '/api/chat', { message: userText });
+  return { reply: data.response || data.reply || '' };
+}
+
+export async function extractDocumentData(file) {
+  const formData = new FormData();
+  formData.append('document', file);
+  return apiRequest('POST', '/api/ocr/extract', formData);
+}
+
+export async function verifyPropertyRegistration(registrationNumber) {
+  return apiRequest('POST', '/api/municipal/verify', { registrationNumber });
+}
+
+export async function matchLoanEligibility(payload) {
+  return apiRequest('POST', '/api/loan/match', payload);
+}
+
+export async function createLawyerBooking(payload) {
+  return apiRequest('POST', '/api/lawyers/book', payload);
+}
+
+export async function fetchDashboardStats() {
+  return apiRequest('GET', '/api/dashboard/stats');
+}
+
+export function getMockOCRResult(fileName = 'document.pdf') {
+  return {
+    fileName,
+    extractedText: 'Buyer Name: Rohan Iyer\nSeller Name: Meena Rao\nTransaction Date: 14/02/2025\nProperty Value: ₹7500000',
+    extractedFields: {
+      buyerName: 'Rohan Iyer',
+      sellerName: 'Meena Rao',
+      transactionDate: '14/02/2025',
+      propertyValue: '7500000'
+    }
+  };
+}
+
+export function getMockMunicipalResult(registrationNumber) {
+  return {
+    registrationNumber,
+    reraStatus: 'VALID',
+    taxRecordStatus: 'UP_TO_DATE',
+    buildingPermitStatus: 'APPROVED',
+    zoningCompliance: 'COMPLIANT'
+  };
+}
+
+export function getMockLoanOffers(propertyValue, buyerIncome, city) {
+  const banks = [
+    { bankName: 'State Bank of India', interestRate: 8.45 },
+    { bankName: 'HDFC Bank', interestRate: 8.7 },
+    { bankName: 'ICICI Bank', interestRate: 8.8 },
+    { bankName: 'Axis Bank', interestRate: 8.95 },
+    { bankName: 'Bank of Baroda', interestRate: 8.6 }
+  ];
+
+  const maxCap = Math.min(propertyValue * 0.8, buyerIncome * 60);
+  return {
+    city,
+    offers: banks.map((bank, i) => ({
+      bankName: bank.bankName,
+      loanEligibility: i < 3 ? 'ELIGIBLE' : 'PARTIALLY_ELIGIBLE',
+      interestRate: bank.interestRate,
+      maxLoanAmount: Math.round(maxCap - i * 120000),
+      emiEstimate: Math.round((maxCap - i * 120000) * 0.0086)
+    }))
+  };
+}
+
+export function getMockBooking(payload = {}) {
+  return {
+    message: 'Lawyer booking created successfully',
+    persisted: false,
+    booking: {
+      _id: `local-${Date.now()}`,
+      lawyerId: payload.lawyerId || 1,
+      userDetails: payload.userDetails || { name: 'Guest User', phone: '9999999999', email: '' },
+      bookingTime: new Date().toISOString()
+    }
+  };
+}
+
+export function getMockDashboardStats() {
+  return {
+    totalScans: 3247,
+    fraudCasesDetected: 418,
+    lawyersConnected: 962,
+    source: 'mock'
+  };
 }
 
 /* ─── Mock / Fallback Data (used when backend is offline) ─── */

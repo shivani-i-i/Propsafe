@@ -1,7 +1,8 @@
 /**
  * PropSafe — Lawyer Marketplace Module (Tab 2)
  */
-import { fetchLawyers, getMockLawyers, sendChatMessage } from './api.js';
+import { fetchLawyers, getMockLawyers, sendChatMessage, createLawyerBooking, getMockBooking } from './api.js';
+import { showToast } from './toast.js';
 
 const chatHistory = [
   { role: 'assistant', content: 'Hello! Ask me anything about property verification, title deeds, RERA, or fraud prevention in India.' }
@@ -19,19 +20,33 @@ export async function loadLawyers() {
   btn && (btn.disabled = true);
   btn && (btn.innerHTML = `<div class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:6px;display:inline-block;vertical-align:middle;"></div> Finding…`);
 
-  grid.innerHTML = `<div class="spinner-overlay" style="grid-column:1/-1;"><div class="spinner"></div><div class="spinner-text">Finding verified lawyers…</div></div>`;
+  grid.innerHTML = `
+    <div class="skeleton-grid" style="grid-column:1/-1;">
+      ${Array.from({ length: 6 }).map(() => `
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-line w-55"></div>
+          <div class="skeleton skeleton-line w-85"></div>
+          <div class="skeleton skeleton-line w-40"></div>
+          <div class="skeleton skeleton-line w-100"></div>
+          <div class="skeleton skeleton-line w-70"></div>
+        </div>
+      `).join('')}
+    </div>`;
 
   let lawyers;
   try {
     lawyers = await fetchLawyers(city, spec);
+    showToast('Lawyers loaded successfully.', 'success');
   } catch (_) {
     lawyers = getMockLawyers(city, spec);
+    showToast('Backend unavailable. Showing fallback lawyers.', 'warning');
   }
 
   btn && (btn.disabled = false);
   btn && (btn.innerHTML = `🔍 Find Lawyers`);
 
   if (!lawyers || lawyers.length === 0) {
+    showToast('No lawyers found for the selected filters.', 'warning');
     grid.innerHTML = `
       <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
         <div style="font-size:40px;margin-bottom:12px;">🔍</div>
@@ -46,9 +61,10 @@ export async function loadLawyers() {
   // Attach book buttons
   grid.querySelectorAll('.book-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const lawyerId    = Number(btn.dataset.id || 0);
       const lawyerName  = btn.dataset.name;
       const lawyerPrice = btn.dataset.price;
-      showBookingModal(lawyerName, lawyerPrice);
+      showBookingModal(lawyerName, lawyerPrice, lawyerId);
     });
   });
 }
@@ -87,7 +103,7 @@ function renderLawyerCard(l) {
           <span class="price-old">₹${l.oldPrice}</span>
           <div style="font-size:10px;color:var(--text-muted);font-weight:600;letter-spacing:0.04em;margin-top:1px;">per consultation</div>
         </div>
-        <button class="btn btn-outline btn-sm book-btn" data-name="${l.name}" data-price="${l.price}">
+        <button class="btn btn-outline btn-sm book-btn" data-id="${l.id}" data-name="${l.name}" data-price="${l.price}">
           Book Now
         </button>
       </div>
@@ -95,7 +111,7 @@ function renderLawyerCard(l) {
 }
 
 /* ─── Booking Modal ─── */
-function showBookingModal(name, price) {
+function showBookingModal(name, price, lawyerId) {
   const existingModal = document.getElementById('bookingModal');
   if (existingModal) existingModal.remove();
 
@@ -125,17 +141,62 @@ function showBookingModal(name, price) {
   document.body.appendChild(modal);
 
   modal.querySelector('#cancelBooking').addEventListener('click', () => modal.remove());
-  modal.querySelector('#confirmBooking').addEventListener('click', () => {
+  modal.querySelector('#confirmBooking').addEventListener('click', async () => {
+    const bookingPayload = {
+      lawyerId,
+      userDetails: {
+        name: 'PropSafe User',
+        phone: '9999999999',
+        email: ''
+      }
+    };
+
+    let bookingResponse;
+    try {
+      bookingResponse = await createLawyerBooking(bookingPayload);
+      showToast('Booking created successfully.', 'success');
+    } catch (_) {
+      bookingResponse = getMockBooking(bookingPayload);
+      showToast('Booking service unavailable. Created local confirmation.', 'warning');
+    }
+
+    const booking = bookingResponse.booking || {};
+    const bookingId = booking._id || `BK-${Date.now()}`;
+    const bookingTime = new Date(booking.bookingTime || Date.now()).toLocaleString('en-IN');
+
     modal.innerHTML = `
-      <div class="modal animate-scale-in">
+      <div class="modal animate-scale-in booking-success-screen">
         <div class="modal-icon">🎉</div>
         <div class="modal-title">Booking Confirmed!</div>
         <div class="modal-sub">
-          Your consultation with <strong>${name}</strong> is confirmed.<br>
-          You will receive a WhatsApp message at your registered number within 30 minutes.
+          <strong>ID:</strong> ${bookingId}<br>
+          <strong>Lawyer:</strong> ${name}<br>
+          <strong>Date & Time:</strong> ${bookingTime}
         </div>
-        <button class="btn btn-primary btn-full" id="closeBk" style="margin-top:8px;">Done</button>
+        <div class="modal-actions" style="margin-top:8px;">
+          <button class="btn btn-primary" style="flex:1;" id="downloadReceipt">Download Confirmation</button>
+          <button class="btn btn-outline" style="flex:1;" id="closeBk">Done</button>
+        </div>
       </div>`;
+
+    modal.querySelector('#downloadReceipt').addEventListener('click', () => {
+      const jsPDFLib = window.jspdf?.jsPDF;
+      if (!jsPDFLib) {
+        showToast('PDF library is not available.', 'error');
+        return;
+      }
+      const doc = new jsPDFLib();
+      doc.setFontSize(16);
+      doc.text('PropSafe Booking Confirmation', 20, 20);
+      doc.setFontSize(12);
+      doc.text(`Booking ID: ${bookingId}`, 20, 40);
+      doc.text(`Lawyer Name: ${name}`, 20, 50);
+      doc.text(`Consultation Fee: ₹${price}`, 20, 60);
+      doc.text(`Booked At: ${bookingTime}`, 20, 70);
+      doc.save(`propsafe-booking-${bookingId}.pdf`);
+      showToast('Confirmation downloaded successfully.', 'success');
+    });
+
     modal.querySelector('#closeBk').addEventListener('click', () => modal.remove());
   });
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
@@ -170,8 +231,10 @@ export function initChat() {
     try {
       const result = await sendChatMessage(chatHistory);
       reply = result.reply || result.content || result.message;
+      showToast('AI response received.', 'success');
     } catch (_) {
       reply = getMockChatReply(text);
+      showToast('AI backend unavailable. Showing fallback response.', 'warning');
     }
 
     typingEl.remove();

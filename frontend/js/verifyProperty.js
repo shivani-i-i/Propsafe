@@ -1,0 +1,60 @@
+import { verifyPropertyRegistration, getMockMunicipalResult } from './api.js';
+import { showToast } from './toast.js';
+
+function statusCell(label, status) {
+  const isGood = ['VALID', 'UP_TO_DATE', 'APPROVED', 'COMPLIANT'].includes(String(status));
+  const icon = isGood ? '✅' : '❌';
+  const className = isGood ? 'verify-ok' : 'verify-bad';
+  return `
+    <div class="verify-row ${className}">
+      <div class="verify-key">${label}</div>
+      <div class="verify-value">${icon} ${status}</div>
+    </div>`;
+}
+
+export async function runMunicipalVerification() {
+  const input = document.getElementById('registrationNumber');
+  const resultArea = document.getElementById('verifyResult');
+  const btn = document.getElementById('verifyPropertyBtn');
+
+  const registrationNumber = input?.value?.trim() || '';
+  if (!registrationNumber) {
+    showToast('Please enter a property registration number.', 'warning');
+    resultArea.innerHTML = `
+      <div class="error-card animate-fade-in-up">
+        <div class="error-icon">⚠️</div>
+        <div>
+          <div class="error-title">Missing Registration Number</div>
+          <div class="error-msg">Please enter a property registration number to verify.</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner" style="width:16px;height:16px;border-width:2px;"></div> Verifying...`;
+  resultArea.innerHTML = `<div class="spinner-overlay"><div class="spinner"></div><div class="spinner-text">Checking municipal records...</div></div>`;
+
+  let data;
+  try {
+    data = await verifyPropertyRegistration(registrationNumber);
+    showToast('Property verification completed.', 'success');
+  } catch (_) {
+    await new Promise(r => setTimeout(r, 1000));
+    data = getMockMunicipalResult(registrationNumber);
+    showToast('Verification service unavailable. Showing fallback report.', 'warning');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Verify Now';
+
+  resultArea.innerHTML = `
+    <div class="verify-card animate-fade-in-up">
+      <div class="verify-head">Verification Report — ${data.registrationNumber || registrationNumber}</div>
+      ${statusCell('RERA Status', data.reraStatus)}
+      ${statusCell('Tax Records', data.taxRecordStatus)}
+      ${statusCell('Building Permit', data.buildingPermitStatus)}
+      ${statusCell('Zoning Compliance', data.zoningCompliance)}
+    </div>
+  `;
+}

@@ -4,12 +4,46 @@
  */
 import { initUploadZone, runFraudAnalysis }  from './fraudDetection.js';
 import { loadLawyers, initChat }              from './lawyerMarketplace.js';
-import { runPricePredictor }                  from './pricePredictor.js';
+import { runPricePredictor, runLoanMatcher }  from './pricePredictor.js';
+import { runMunicipalVerification }            from './verifyProperty.js';
+import { fetchDashboardStats, getMockDashboardStats } from './api.js';
 
 /* ─── Tab Switching ─── */
-const TABS = ['fraud', 'lawyers', 'price'];
+const TABS = ['home', 'fraud', 'lawyers', 'price', 'verify'];
 
 let lawyersLoaded = false;
+let countersAnimated = false;
+
+function animateCounter(id, target, duration = 1000) {
+  const node = document.getElementById(id);
+  if (!node) return;
+
+  const start = performance.now();
+  const from = 0;
+  function frame(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const value = Math.floor(from + (target - from) * progress);
+    node.textContent = value.toLocaleString('en-IN');
+    if (progress < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+async function runDashboardCounters() {
+  if (countersAnimated) return;
+
+  let stats;
+  try {
+    stats = await fetchDashboardStats();
+  } catch (_) {
+    stats = getMockDashboardStats();
+  }
+
+  countersAnimated = true;
+  animateCounter('counterScans', Number(stats.totalScans || 0), 1200);
+  animateCounter('counterFraud', Number(stats.fraudCasesDetected || 0), 1400);
+  animateCounter('counterLawyers', Number(stats.lawyersConnected || 0), 1300);
+}
 
 window.switchTab = function(tabId) {
   TABS.forEach(t => {
@@ -25,6 +59,9 @@ window.switchTab = function(tabId) {
       lawyersLoaded = true;
       loadLawyers();
     }
+    if (tabId === 'home') {
+      runDashboardCounters();
+    }
   }
 };
 
@@ -34,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
-      switchTab(tab);
+      window.switchTab(tab);
       // Sync navbar active
       document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -45,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-tab-btn]').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tabBtn;
-      switchTab(tab);
+      window.switchTab(tab);
     });
   });
 
@@ -62,13 +99,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Price predictor
   document.getElementById('predictBtn')?.addEventListener('click', runPricePredictor);
+  document.getElementById('loanMatchBtn')?.addEventListener('click', runLoanMatcher);
+
+  // Municipal verification
+  document.getElementById('verifyPropertyBtn')?.addEventListener('click', runMunicipalVerification);
+
+  // Dashboard CTA
+  document.getElementById('startScanBtn')?.addEventListener('click', () => {
+    window.switchTab('fraud');
+  });
 
   // Chat init (deferred so DOM is ready)
   initChat();
 
   // Default tab
-  document.getElementById('tab-fraud')?.classList.add('active');
-  document.getElementById('content-fraud')?.classList.add('active');
+  document.getElementById('tab-home')?.classList.add('active');
+  document.getElementById('content-home')?.classList.add('active');
+  runDashboardCounters();
 
   // Sync navbar on tab switch
   function syncNavbar(tabId) {
