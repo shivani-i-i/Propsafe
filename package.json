@@ -1,0 +1,16 @@
+{
+  "name": "propsafe-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "stop:dev": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$ports=@(3000,5173); foreach($p in $ports){ $conns=Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){ try { Stop-Process -Id $c.OwningProcess -Force -ErrorAction Stop } catch {} } }; Write-Output 'Stopped dev ports (if active).'\"",
+    "dev": "concurrently -k -n BACKEND,FRONTEND -c green,cyan \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:clean": "npm run stop:dev && npm run dev",
+    "dev:backend": "node backend/server.js",
+    "dev:frontend": "http-server frontend -p 5173 -c-1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "http-server": "^14.1.1"
+  }
+}

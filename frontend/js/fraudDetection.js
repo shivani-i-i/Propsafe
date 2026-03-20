@@ -110,7 +110,15 @@ async function runOCRExtraction(file, listNode) {
   try {
     data = await extractDocumentData(file);
     showToast('Document data extracted successfully.', 'success');
-  } catch (_) {
+  } catch (error) {
+    const message = String(error?.message || '');
+    const isActionableInputError = /No extractable text found in PDF|Only image or PDF files are supported|Document file is required/i.test(message);
+    if (isActionableInputError) {
+      loading.remove();
+      showToast(message, 'error');
+      return;
+    }
+
     await sleep(1200);
     data = getMockOCRResult(file.name);
     showToast('OCR service unavailable. Using fallback extraction.', 'warning');

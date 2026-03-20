@@ -1,4 +1,5 @@
 import Tesseract from 'tesseract.js';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { successResponse, errorResponse } from '../utils/responses.js';
 
 function extractFirstMatch(text, patterns) {
@@ -55,8 +56,24 @@ export async function extractDocumentText(req, res) {
       return errorResponse(res, 'Only image or PDF files are supported', 400);
     }
 
-    const { data } = await Tesseract.recognize(buffer, 'eng');
-    const extractedText = data?.text || '';
+    let extractedText = '';
+
+    if (mimetype === 'application/pdf') {
+      const parsedPdf = await pdfParse(buffer);
+      extractedText = (parsedPdf?.text || '').trim();
+
+      if (!extractedText) {
+        return errorResponse(
+          res,
+          'No extractable text found in PDF. Please upload a clear image or a searchable PDF.',
+          422
+        );
+      }
+    } else {
+      const { data } = await Tesseract.recognize(buffer, 'eng');
+      extractedText = (data?.text || '').trim();
+    }
+
     const fields = parseFields(extractedText);
 
     return successResponse(res, {

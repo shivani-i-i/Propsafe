@@ -89,18 +89,31 @@ cd Propsafe
 cd backend
 npm install
 
+### 2.1 Install workspace dependencies (one-time)
+cd ..
+npm install
+
 ### 3. Add your API key
 Create backend/.env:
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 MONGODB_URI=your_mongodb_uri_here
 PORT=3000
 
-### 4. Start the backend
-node server.js
-Server runs at http://localhost:3000
+### 4. Start full app (backend + frontend) with one command
+npm run dev
 
-### 5. Open the frontend
-Open frontend/index.html in your browser or use Live Server in VS Code.
+If ports are already in use, run a clean start:
+npm run dev:clean
+
+To stop/kick old listeners on dev ports manually:
+npm run stop:dev
+
+- Backend API: http://localhost:3000
+- Frontend app: http://localhost:5173
+
+### 5. Optional: run backend only
+cd backend
+node server.js
 
 ---
 
