@@ -1,55 +1,68 @@
 # 🏠 PropSafe — AI-Powered Property Fraud Detection Platform
 
-> Protecting Indian families from property fraud — one verification at a time.
+> **"Ramesh saved ₹40 lakhs for 20 years. Three years later, the real owner appeared. Ramesh lost everything."**
+> PropSafe exists so this never happens again.
 
 [![SDG 11](https://img.shields.io/badge/SDG%2011-Sustainable%20Cities-orange)](https://sdgs.un.org/goals/goal11)
 [![SDG 16](https://img.shields.io/badge/SDG%2016-Peace%20%26%20Justice-blue)](https://sdgs.un.org/goals/goal16)
 [![SDG 10](https://img.shields.io/badge/SDG%2010-Reduced%20Inequalities-red)](https://sdgs.un.org/goals/goal10)
+[![Built by](https://img.shields.io/badge/Built%20by-Kumari%20Shivani-cyan)](https://github.com/shivani-i-i)
 
 ---
 
 ## 🔴 The Problem
 
-Every year, thousands of Indian middle-class families lose their life savings to property fraud:
+Every year, thousands of Indian middle-class families lose their life savings to property fraud. Property records in India are **scattered across municipalities, revenue departments, and registrar offices** — making it nearly impossible for ordinary buyers to verify anything.
 
-- **Fake ownership documents** — forged title deeds sold to unsuspecting buyers
-- **Benami properties** — real ownership hidden under different names
-- **Hidden loans & disputes** — properties sold with undisclosed mortgages
-- **Unauthorized constructions** — buildings with no legal permits
-- **No right to sell** — sellers who don't legally own the property
-
-Property records in India are scattered across municipalities, revenue departments, and registrar offices — making it nearly impossible for ordinary buyers to verify anything.
-
----
-
-## 💡 Our Solution
-
-PropSafe is a full-stack AI-powered platform that combines fraud detection, verified legal access, and price intelligence into one ecosystem.
-
-> "Not just a document scanner — a complete property fraud prevention ecosystem."
+| Fraud Type | What Happens |
+|---|---|
+| Fake Ownership Documents | Forged title deeds sold to unsuspecting buyers |
+| Benami Properties | Real ownership hidden under different names |
+| Hidden Loans & Disputes | Properties sold with undisclosed mortgages |
+| Unauthorized Constructions | Buildings with no legal permits or zoning approval |
+| No Right to Sell | Sellers who don't legally own the property |
 
 ---
 
-## ⚙️ Core Features
+## 💡 The Solution
+
+PropSafe is a full-stack AI-powered platform that gives every Indian buyer **legal-grade property verification in under 2 minutes** — at 80% less than traditional costs.
+
+> *"Not just a document scanner — a complete end-to-end property fraud prevention ecosystem."*
+
+---
+
+## ✨ Core Features
 
 ### 🤖 Feature 1 — AI Fraud Detection Engine
-- Buyer fills in property details — type, city, seller name, ownership history, income vs value
+- Enter property details: type, city, seller name, ownership history, income vs value
 - Claude AI analyzes for red flags: benami patterns, rapid transfers, income mismatch
-- Returns a **Fraud Risk Score (0–100)** with LOW / MEDIUM / HIGH risk level
-- Shows red flags, positive signs, recommendation, and immediate action
-- HIGH risk auto-connects buyer to a verified lawyer
+- Returns a **Fraud Risk Score (0–100)** — LOW / MEDIUM / HIGH
+- HIGH risk auto-connects buyer to a verified lawyer instantly
 
 ### ⚖️ Feature 2 — Verified Lawyer Marketplace
-- 8 Bar Council verified property lawyers across Indian cities
-- Cost: **₹500–₹1,000** vs ₹5,000+ traditional rate — **80% cheaper**
+- Bar Council verified property lawyers across Indian cities
+- **₹500–₹1,000** vs ₹5,000+ traditional — **80% cheaper, 10x faster**
 - Filter by city and specialization
-- AI Legal Chat powered by Claude — ask any property law question instantly
+- AI Legal Chat — ask any Indian property law question instantly
 
 ### 📈 Feature 3 — Price Appreciation Predictor
-- Historical price data 2015–2024 + predicted 2025–2026
-- Chart.js visualization with teal historical and amber predicted lines
-- Negotiation intelligence: "Property overpriced by ₹X — negotiate to ₹Y"
-- Infrastructure tags showing upcoming metro, roads, hospitals boosting area value
+- Historical price data 2015–2024 with 2025–2026 forecasts
+- Chart.js visualization: historical + predicted price curves
+- Negotiation intelligence: *"Property overpriced by ₹X — negotiate to ₹Y"*
+- Infrastructure tags: metro lines, roads, hospitals driving area value
+
+### 🏛️ Feature 4 — Municipal Record Verification *(Phase 2)*
+- Auto-verifies RERA registration, tax records, building permits
+- Flags illegal constructions before purchase
+
+### ⚡ Feature 5 — Dispute Resolution & Title Insurance *(Phase 2)*
+- On-platform arbitration at ₹5,000–₹10,000 vs ₹2L+ in court
+- One-time title insurance at ₹10,000–₹20,000
+
+### 🏦 Feature 6 — Smart Loan & Bank Matcher *(Phase 2)*
+- Tells buyer which banks will finance the property
+- Live interest rate comparison across banks
 
 ---
 
@@ -60,91 +73,68 @@ PropSafe is a full-stack AI-powered platform that combines fraud detection, veri
 | Frontend | HTML, CSS, JavaScript |
 | Backend | Node.js, Express |
 | AI Engine | Anthropic Claude API (claude-sonnet-4-20250514) |
+| OCR | Tesseract.js |
+| Database | MongoDB (with offline fallback) |
 | Charts | Chart.js |
-| Styling | Custom CSS, Google Fonts (Syne + DM Sans) |
 
 ---
 
 ## 🚀 Getting Started
 
 ### 1. Clone the repo
-```bash
 git clone https://github.com/shivani-i-i/Propsafe.git
 cd Propsafe
-```
 
-### 2. Setup Backend
-```bash
+### 2. Install backend dependencies
 cd backend
 npm install
-```
 
 ### 3. Add your API key
-Open `backend/.env` and add:
-```
+Create backend/.env:
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
-```
-Get your key at [console.anthropic.com](https://console.anthropic.com)
+MONGODB_URI=your_mongodb_uri_here
+PORT=3000
 
 ### 4. Start the backend
-```bash
 node server.js
-```
 Server runs at http://localhost:3000
 
 ### 5. Open the frontend
-Open `frontend/index.html` in your browser or use Live Server in VS Code.
+Open frontend/index.html in your browser or use Live Server in VS Code.
 
 ---
 
-## 📁 Project Structure
-```
-PropSafe/
-├── backend/
-│   ├── controllers/
-│   │   ├── fraudController.js
-│   │   ├── lawyerController.js
-│   │   ├── priceController.js
-│   │   └── chatController.js
-│   ├── routes/
-│   │   ├── fraud.js
-│   │   ├── lawyers.js
-│   │   ├── price.js
-│   │   └── chat.js
-│   ├── data/
-│   │   └── lawyers.json
-│   ├── .env
-│   ├── server.js
-│   └── package.json
-├── frontend/
-│   ├── css/
-│   │   ├── style.css
-│   │   └── animations.css
-│   ├── js/
-│   │   ├── api.js
-│   │   ├── app.js
-│   │   ├── fraudDetection.js
-│   │   ├── lawyerMarketplace.js
-│   │   └── pricePredictor.js
-│   └── index.html
-└── README.md
-```
+## 📊 Expected Impact
+
+| Metric | Value |
+|---|---|
+| Fraud risk score delivery | Under 2 minutes |
+| Cost savings vs traditional legal | 80% cheaper |
+| Title insurance (one-time) | ₹10,000 |
+| Dispute resolution vs court | 1/20th the cost |
 
 ---
 
 ## 🌍 SDG Alignment
 
-| SDG | How PropSafe Helps |
+| SDG | How PropSafe Contributes |
 |---|---|
-| **SDG 11** — Sustainable Cities | Safer verified urban property markets |
-| **SDG 16** — Peace & Justice | Fighting fraud with blockchain-backed AI records |
-| **SDG 10** — Reduced Inequalities | Legal-grade verification at ₹500 instead of ₹5,000+ |
+| SDG 11 — Sustainable Cities | Safer verified urban property markets |
+| SDG 16 — Peace & Justice | Blockchain-backed tamper-proof records |
+| SDG 10 — Reduced Inequalities | Legal-grade verification at ₹500 instead of ₹5,000+ |
 
 ---
 
-## 👩‍💻 Built for Hackathon
+## 👩‍💻 Built by Kumari Shivani
 
-PropSafe was built as a hackathon project to demonstrate how AI can make property verification fast, affordable, and accessible for every Indian family.
+Built to demonstrate how AI can make property verification fast, affordable, and accessible for every Indian family.
+
+---
+
+## 📎 Links
+
+- 🎥 Live Demo: https://drive.google.com/file/d/1LNbNa454cK5N0Q77z4Oaz2RLuZdRWkyY/view
+- 💻 GitHub: https://github.com/shivani-i-i/Propsafe
 
 ---
 
