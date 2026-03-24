@@ -17,6 +17,11 @@ export async function runMunicipalVerification() {
   const resultArea = document.getElementById('verifyResult');
   const btn = document.getElementById('verifyPropertyBtn');
 
+  if (!input || !resultArea || !btn) {
+    showToast('Verification UI is not ready. Please refresh and try again.', 'error');
+    return;
+  }
+
   const registrationNumber = input?.value?.trim() || '';
   if (!registrationNumber) {
     showToast('Please enter a property registration number.', 'warning');
@@ -37,24 +42,43 @@ export async function runMunicipalVerification() {
 
   let data;
   try {
-    data = await verifyPropertyRegistration(registrationNumber);
-    showToast('Property verification completed.', 'success');
-  } catch (_) {
-    await new Promise(r => setTimeout(r, 1000));
-    data = getMockMunicipalResult(registrationNumber);
-    showToast('Verification service unavailable. Showing fallback report.', 'warning');
+    try {
+      data = await verifyPropertyRegistration(registrationNumber);
+      showToast('Property verification completed.', 'success');
+    } catch (error) {
+      const message = String(error?.message || '');
+      const networkDown = /failed to fetch|networkerror|load failed|fetch/i.test(message);
+
+      if (networkDown) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        data = getMockMunicipalResult(registrationNumber);
+        showToast('Backend is offline. Showing fallback report.', 'warning');
+      } else {
+        throw new Error(message || 'Municipal verification request failed.');
+      }
+    }
+
+    resultArea.innerHTML = `
+      <div class="verify-card animate-fade-in-up">
+        <div class="verify-head">Verification Report — ${data.registrationNumber || registrationNumber}</div>
+        ${statusCell('RERA Status', data.reraStatus)}
+        ${statusCell('Tax Records', data.taxRecordStatus)}
+        ${statusCell('Building Permit', data.buildingPermitStatus)}
+        ${statusCell('Zoning Compliance', data.zoningCompliance)}
+      </div>
+    `;
+  } catch (error) {
+    showToast(`Verification failed: ${error?.message || 'Please try again.'}`, 'error');
+    resultArea.innerHTML = `
+      <div class="error-card animate-fade-in-up">
+        <div class="error-icon">❌</div>
+        <div>
+          <div class="error-title">Verification Failed</div>
+          <div class="error-msg">${error?.message || 'Unable to generate municipal verification report right now.'}</div>
+        </div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Verify Now';
   }
-
-  btn.disabled = false;
-  btn.innerHTML = 'Verify Now';
-
-  resultArea.innerHTML = `
-    <div class="verify-card animate-fade-in-up">
-      <div class="verify-head">Verification Report — ${data.registrationNumber || registrationNumber}</div>
-      ${statusCell('RERA Status', data.reraStatus)}
-      ${statusCell('Tax Records', data.taxRecordStatus)}
-      ${statusCell('Building Permit', data.buildingPermitStatus)}
-      ${statusCell('Zoning Compliance', data.zoningCompliance)}
-    </div>
-  `;
 }

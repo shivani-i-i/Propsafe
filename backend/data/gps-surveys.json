@@ -1,0 +1,89 @@
+[
+  {
+    "certificateId": "GPS-2026-YJ3P2V",
+    "propertyId": "PROP-TN-2026-001",
+    "coordinates": [
+      [
+        13.0827,
+        80.2707
+      ],
+      [
+        13.0828,
+        80.271
+      ],
+      [
+        13.0825,
+        80.2712
+      ],
+      [
+        13.0824,
+        80.2708
+      ]
+    ],
+    "calculatedArea": 784.48,
+    "serverCalculatedArea": 1448.46,
+    "clientCalculatedArea": 120.5,
+    "registeredArea": 118,
+    "discrepancyPercent": 564.81,
+    "verified": false,
+    "submittedAt": "2026-03-24T09:55:08.727Z"
+  },
+  {
+    "certificateId": "GPS-2026-VDD1A9",
+    "propertyId": "PROP-TN-2026-002",
+    "coordinates": [
+      [
+        13.0827,
+        80.2707
+      ],
+      [
+        13.0828,
+        80.271
+      ],
+      [
+        13.0825,
+        80.2712
+      ],
+      [
+        13.0824,
+        80.2708
+      ]
+    ],
+    "calculatedArea": 784.48,
+    "serverCalculatedArea": 1448.46,
+    "clientCalculatedArea": 120.5,
+    "registeredArea": 118,
+    "discrepancyPercent": 564.81,
+    "verified": false,
+    "submittedAt": "2026-03-24T09:55:34.813Z"
+  },
+  {
+    "certificateId": "GPS-2026-X5WFX0",
+    "propertyId": "PROP-TN-2026-SMOKE2",
+    "coordinates": [
+      [
+        13.0827,
+        80.2707
+      ],
+      [
+        13.0828,
+        80.271
+      ],
+      [
+        13.0825,
+        80.2712
+      ],
+      [
+        13.0824,
+        80.2708
+      ]
+    ],
+    "calculatedArea": 1448.46,
+    "serverCalculatedArea": 1448.46,
+    "clientCalculatedArea": 780,
+    "registeredArea": 790,
+    "discrepancyPercent": 83.35,
+    "verified": false,
+    "submittedAt": "2026-03-24T10:02:25.767Z"
+  }
+]

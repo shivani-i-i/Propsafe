@@ -10,6 +10,7 @@ import priceRoutes from './routes/price.js';
 import chatRoutes from './routes/chat.js';
 import ocrRoutes from './routes/ocr.js';
 import municipalRoutes from './routes/municipal.js';
+import gpsSurveyRoutes from './routes/gpsSurvey.js';
 import loanRoutes from './routes/loan.js';
 import dashboardRoutes from './routes/dashboard.js';
 import { connectDB } from './config/db.js';
@@ -36,6 +37,7 @@ app.use('/api/price', priceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/municipal', municipalRoutes);
+app.use('/api/gps-survey', gpsSurveyRoutes);
 app.use('/api/loan', loanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

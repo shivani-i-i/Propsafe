@@ -1337,6 +1337,21 @@ textarea.form-control { resize: vertical; min-height: 90px; line-height: 1.6; }
   color: var(--red);
 }
 
+.gps-embed-wrap {
+  margin-top: 16px;
+  border: 1px solid var(--border-bright);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0B1E3F;
+}
+
+.gps-embed-frame {
+  width: 100%;
+  height: min(78vh, 860px);
+  border: none;
+  background: #0B1E3F;
+}
+
 .loan-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -1460,7 +1475,7 @@ textarea.form-control { resize: vertical; min-height: 90px; line-height: 1.6; }
     padding: 8px 6px;
     gap: 4px;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .nav-tab {
@@ -1542,6 +1557,16 @@ textarea.form-control { resize: vertical; min-height: 90px; line-height: 1.6; }
     border-left: none;
     border-top: 1px solid rgba(34,197,94,0.2);
   }
+
+  .gps-embed-wrap {
+    margin-top: 12px;
+    border-radius: 12px;
+  }
+
+  .gps-embed-frame {
+    height: 72vh;
+    min-height: 520px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1556,6 +1581,7 @@ textarea.form-control { resize: vertical; min-height: 90px; line-height: 1.6; }
   .lawyers-grid { grid-template-columns: 1fr; }
   .risk-header { flex-direction: column; align-items: center; text-align: center; }
   .modal { padding: 24px; }
+  .gps-embed-frame { height: 68vh; min-height: 460px; }
 }
 
 /* ─── @keyframes (duplicated here for standalone use) ─── */

@@ -56,6 +56,12 @@ PropSafe is a full-stack AI-powered platform that gives every Indian buyer **leg
 - Auto-verifies RERA registration, tax records, building permits
 - Flags illegal constructions before purchase
 
+### 📍 Feature 7 — GPS Property Survey *(New)*
+- Browser GPS boundary survey using Geolocation API + Leaflet map
+- Tap/click boundary corners to draw polygon and compute live area (sq.m / sq.ft)
+- Submits to backend for server-side Shoelace verification
+- Flags mismatch when surveyed area differs from registered area by more than 5%
+
 ### ⚡ Feature 5 — Dispute Resolution & Title Insurance *(Phase 2)*
 - On-platform arbitration at ₹5,000–₹10,000 vs ₹2L+ in court
 - One-time title insurance at ₹10,000–₹20,000
@@ -110,6 +116,8 @@ npm run stop:dev
 
 - Backend API: http://localhost:3000
 - Frontend app: http://localhost:5173
+- GPS Survey page: http://localhost:5173/gps-survey.html
+- GPS Survey API: POST http://localhost:3000/api/gps-survey/submit
 
 ### 5. Optional: run backend only
 cd backend

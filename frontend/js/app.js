@@ -9,7 +9,7 @@ import { runMunicipalVerification }            from './verifyProperty.js';
 import { fetchDashboardStats, getMockDashboardStats } from './api.js';
 
 /* ─── Tab Switching ─── */
-const TABS = ['home', 'fraud', 'lawyers', 'price', 'verify'];
+const TABS = ['home', 'fraud', 'lawyers', 'price', 'verify', 'gps'];
 
 let lawyersLoaded = false;
 let countersAnimated = false;
@@ -103,10 +103,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Municipal verification
   document.getElementById('verifyPropertyBtn')?.addEventListener('click', runMunicipalVerification);
+  document.getElementById('registrationNumber')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      runMunicipalVerification();
+    }
+  });
 
   // Dashboard CTA
   document.getElementById('startScanBtn')?.addEventListener('click', () => {
     window.switchTab('fraud');
+  });
+  document.getElementById('openGpsSurveyBtn')?.addEventListener('click', () => {
+    window.switchTab('gps');
+    const gpsSection = document.getElementById('content-gps');
+    if (gpsSection) {
+      requestAnimationFrame(() => {
+        gpsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   });
 
   // Chat init (deferred so DOM is ready)
