@@ -11,9 +11,19 @@ const cornerCounter = document.getElementById('cornerCounter');
 const cornersList = document.getElementById('cornersList');
 const statusText = document.getElementById('statusText');
 const resultCard = document.getElementById('resultCard');
+const areaDisplay = document.getElementById('areaDisplay');
 
 let currentLocation = null;
 let corners = [];
+
+// Google Maps variables
+let map = null;
+let markers = [];
+let polygon = null;
+const DEFAULT_CENTER = { lat: 13.0827, lng: 80.2707 }; // Chennai, India
+
+// Initialize map when page loads
+window.addEventListener('load', initMap);
 
 function calculateArea(coords) {
   // Shoelace formula: converts lat/lng to approximate square meters
@@ -45,6 +55,101 @@ function format(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
+}
+
+function initMap() {
+  if (!document.getElementById('map')) return;
+  
+  map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 18,
+    center: DEFAULT_CENTER,
+    mapTypeControl: false,
+    fullscreenControl: false,
+    streetViewControl: false,
+    styles: [
+      { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+      { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+      { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+      { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
+      { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9080' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
+      { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+      { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
+      { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
+      { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3ff99' }] },
+      { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
+      { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+      { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+      { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] }
+    ]
+  });
+}
+
+function updateMapWithCorners() {
+  // Clear existing markers
+  markers.forEach(marker => marker.setMap(null));
+  markers = [];
+
+  // Remove existing polygon
+  if (polygon) polygon.setMap(null);
+
+  if (corners.length === 0) return;
+
+  // Add markers for each corner
+  corners.forEach((corner, idx) => {
+    const marker = new google.maps.Marker({
+      position: corner,
+      map: map,
+      label: String(idx + 1),
+      title: `Corner ${idx + 1}`,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: '#00d1b2',
+        fillOpacity: 0.8,
+        strokeColor: '#fff',
+        strokeWeight: 2
+      }
+    });
+    markers.push(marker);
+  });
+
+  // Draw polygon if we have 3+ corners
+  if (corners.length >= 3) {
+    polygon = new google.maps.Polygon({
+      paths: corners,
+      strokeColor: '#00d1b2',
+      strokeOpacity: 0.7,
+      strokeWeight: 2,
+      fillColor: '#00d1b2',
+      fillOpacity: 0.15,
+      map: map
+    });
+
+    // Update area display
+    const area = calculateArea(corners);
+    const sqft = area * SQM_TO_SQFT;
+    areaDisplay.textContent = `${format(area)} sq.m (${format(sqft)} sq.ft)`;
+    document.getElementById('map-info').classList.add('active');
+  }
+
+  // Fit map bounds to all corners
+  if (corners.length > 0) {
+    const bounds = new google.maps.LatLngBounds();
+    corners.forEach(corner => bounds.extend(corner));
+    map.fitBounds(bounds, 50);
+  }
+}
+
+function centerMapOnLocation(location) {
+  if (map) {
+    map.setCenter(location);
+    map.setZoom(20);
+  }
 }
 
 function updateCornersUI() {
@@ -111,6 +216,7 @@ function getMyLocation() {
 
       markCornerBtn.disabled = false;
       setStatus(`Location ready: ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
+      centerMapOnLocation(currentLocation);
     },
     (error) => {
       currentLocation = null;
@@ -149,6 +255,7 @@ function markCorner() {
   });
 
   updateCornersUI();
+  updateMapWithCorners();
   setStatus(`Corner ${corners.length} marked.`);
 }
 
@@ -205,7 +312,10 @@ function resetSurvey() {
   completeSurveyBtn.disabled = true;
   resultCard.className = 'result';
   resultCard.innerHTML = '';
+  areaDisplay.textContent = 'Waiting for corners...';
+  document.getElementById('map-info').classList.remove('active');
   updateCornersUI();
+  updateMapWithCorners();
   setStatus('Survey reset. Tap “Get My Location” to continue.');
 }
 
