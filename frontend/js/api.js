@@ -1,10 +1,31 @@
 /**
  * PropSafe — API Layer
  * All backend communication lives here.
- * Base URL: http://localhost:3000
  */
 
-const API_BASE = 'http://localhost:3000';
+function resolveApiBases() {
+  const configured = String(window.PROPSAFE_API_BASE || '').trim();
+  if (configured) {
+    return [configured.replace(/\/$/, '')];
+  }
+
+  const { protocol, hostname, port } = window.location;
+  const sameOrigin = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
+  const localBackend = `${protocol}//${hostname}:3000`;
+
+  // Prefer same-origin in deployed setups, and localhost:3000 for local static frontend.
+  if (port === '3000') {
+    return [sameOrigin];
+  }
+
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return [localBackend, sameOrigin];
+  }
+
+  return [sameOrigin];
+}
+
+const API_BASES = resolveApiBases();
 
 /* ─── Generic request helper ─── */
 async function apiRequest(method, path, body = null) {
@@ -17,15 +38,26 @@ async function apiRequest(method, path, body = null) {
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE}${path}`, options);
-  const payload = await response.json().catch(() => ({}));
+  let lastError = null;
 
-  if (!response.ok) {
-    let errMsg = `Server error ${response.status}`;
-    errMsg = payload?.error?.message || payload?.message || errMsg;
-    throw new Error(errMsg);
+  for (const base of API_BASES) {
+    try {
+      const response = await fetch(`${base}${path}`, options);
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        let errMsg = `Server error ${response.status}`;
+        errMsg = payload?.error?.message || payload?.message || errMsg;
+        throw new Error(errMsg);
+      }
+
+      return payload?.success && payload?.data !== undefined ? payload.data : payload;
+    } catch (error) {
+      lastError = error;
+    }
   }
-  return payload?.success && payload?.data !== undefined ? payload.data : payload;
+
+  throw new Error(lastError?.message || 'Unable to reach backend API.');
 }
 
 function titleCaseRisk(riskLevel = '') {
