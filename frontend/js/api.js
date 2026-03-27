@@ -19,7 +19,10 @@ function resolveApiBases() {
   }
 
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return [localBackend, sameOrigin];
+    // In local development, frontend often runs on a static server (e.g. :5173)
+    // that does not proxy /api routes. Avoid same-origin fallback to prevent
+    // false 404 errors from the static server.
+    return [localBackend];
   }
 
   return [sameOrigin];

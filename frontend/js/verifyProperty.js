@@ -58,7 +58,7 @@ export async function runMunicipalVerification() {
       showToast('Property verification completed.', 'success');
     } catch (error) {
       const message = String(error?.message || '');
-      const networkDown = /failed to fetch|networkerror|load failed|fetch|server error 5\d\d/i.test(message);
+      const networkDown = /failed to fetch|networkerror|load failed|fetch|unable to reach backend api|server error (4\d\d|5\d\d)/i.test(message);
 
       if (networkDown) {
         await new Promise((resolve) => setTimeout(resolve, 600));
