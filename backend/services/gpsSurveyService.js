@@ -1,58 +1,36 @@
-export function normalizeCoordinates(rawCoordinates = []) {
-  if (!Array.isArray(rawCoordinates)) return [];
+import { promises as fs } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
-  return rawCoordinates
-    .map((pair) => {
-      if (!Array.isArray(pair) || pair.length < 2) return null;
-      const lat = Number(pair[0]);
-      const lng = Number(pair[1]);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      return [lat, lng];
-    })
-    .filter(Boolean);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const STORE_PATH = join(__dirname, '..', 'data', 'gps-surveys.json');
+
+export function calculateArea(coords) {
+  let area = 0;
+  const n = coords.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += coords[i].lat * coords[j].lng;
+    area -= coords[j].lat * coords[i].lng;
+  }
+  return Math.abs(area / 2) * 111319.9 * 111319.9;
 }
 
-function toMetersPoints(coords) {
-  if (!Array.isArray(coords) || coords.length < 3) return [];
+export async function saveToFile(record) {
+  await fs.mkdir(join(__dirname, '..', 'data'), { recursive: true });
 
-  const lat0 = coords.reduce((sum, [lat]) => sum + lat, 0) / coords.length;
-  const lng0 = coords.reduce((sum, [, lng]) => sum + lng, 0) / coords.length;
-
-  const latScale = 111320;
-  const lngScale = 111320 * Math.cos((lat0 * Math.PI) / 180);
-
-  return coords.map(([lat, lng]) => [
-    (lng - lng0) * lngScale,
-    (lat - lat0) * latScale
-  ]);
-}
-
-export function calculateAreaByShoelace(coords = []) {
-  const points = toMetersPoints(coords);
-  if (points.length < 3) return 0;
-
-  let doubledArea = 0;
-  for (let index = 0; index < points.length; index += 1) {
-    const [x1, y1] = points[index];
-    const [x2, y2] = points[(index + 1) % points.length];
-    doubledArea += x1 * y2 - x2 * y1;
+  let records = [];
+  try {
+    const existing = await fs.readFile(STORE_PATH, 'utf-8');
+    const parsed = JSON.parse(existing);
+    records = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
   }
 
-  return Math.abs(doubledArea / 2);
-}
-
-export function computeDiscrepancyPercent(baseArea, comparedArea) {
-  const base = Number(baseArea);
-  const compared = Number(comparedArea);
-
-  if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(compared)) return 100;
-  return Math.abs(((compared - base) / base) * 100);
-}
-
-export function verifyAreaMatch(calculatedArea, registeredArea, thresholdPercent = 5) {
-  const discrepancyPercent = computeDiscrepancyPercent(registeredArea, calculatedArea);
-  return {
-    discrepancyPercent,
-    verified: discrepancyPercent <= thresholdPercent
-  };
+  records.push(record);
+  await fs.writeFile(STORE_PATH, JSON.stringify(records, null, 2), 'utf-8');
 }

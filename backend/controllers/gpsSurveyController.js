@@ -1,86 +1,67 @@
-import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { successResponse, errorResponse } from '../utils/responses.js';
-import { normalizeCoordinates, calculateAreaByShoelace, verifyAreaMatch } from '../services/gpsSurveyService.js';
+import { calculateArea, saveToFile } from '../services/gpsSurveyService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const surveysFilePath = join(__dirname, '..', 'data', 'gps-surveys.json');
+function normalizeCoordinates(coordinates) {
+  if (!Array.isArray(coordinates)) return [];
 
-async function readSurveyStore() {
-  try {
-    const text = await fs.readFile(surveysFilePath, 'utf-8');
-    const parsed = JSON.parse(text);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return [];
-    }
-    throw error;
-  }
-}
-
-async function writeSurveyStore(surveys) {
-  await fs.mkdir(join(__dirname, '..', 'data'), { recursive: true });
-  await fs.writeFile(surveysFilePath, JSON.stringify(surveys, null, 2), 'utf-8');
+  return coordinates
+    .map((point) => {
+      const lat = Number(point?.lat);
+      const lng = Number(point?.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat, lng };
+    })
+    .filter(Boolean);
 }
 
 export async function submitGpsSurvey(req, res) {
   try {
-    const {
-      coordinates,
-      calculatedArea,
-      propertyId,
-      registeredArea
-    } = req.body || {};
+    let { coordinates, calculatedArea, propertyId, registeredArea } = req.body || {};
 
     const normalizedCoordinates = normalizeCoordinates(coordinates);
+    if (!normalizedCoordinates || normalizedCoordinates.length < 3) {
+      return errorResponse(res, 'Invalid coordinates. At least 3 points are required.', 400);
+    }
+
     const numericRegisteredArea = Number(registeredArea);
-    const numericClientArea = Number(calculatedArea);
-    const normalizedPropertyId = String(propertyId || '').trim();
-
-    if (normalizedCoordinates.length < 3) {
-      return errorResponse(res, 'At least 3 coordinates are required', 400);
-    }
-
     if (!Number.isFinite(numericRegisteredArea) || numericRegisteredArea <= 0) {
-      return errorResponse(res, 'registeredArea must be a positive number', 400);
+      return errorResponse(res, 'registeredArea must be a positive number.', 400);
     }
 
+    const normalizedPropertyId = String(propertyId || '').trim();
     if (!normalizedPropertyId) {
-      return errorResponse(res, 'propertyId is required', 400);
+      return errorResponse(res, 'propertyId is required.', 400);
     }
 
-    const serverCalculatedArea = calculateAreaByShoelace(normalizedCoordinates);
-    const { verified, discrepancyPercent } = verifyAreaMatch(serverCalculatedArea, numericRegisteredArea, 5);
+    const serverCalculatedArea = Number(calculateArea(normalizedCoordinates));
+    if (!Number.isFinite(serverCalculatedArea) || serverCalculatedArea <= 0) {
+      return errorResponse(res, 'Calculated area is invalid.', 400);
+    }
 
-    const now = new Date();
-    const certificateId = `GPS-${now.getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    calculatedArea = serverCalculatedArea;
 
-    const surveyRecord = {
+    const discrepancyPercent = Math.abs((calculatedArea - numericRegisteredArea) / numericRegisteredArea * 100);
+    const verified = discrepancyPercent <= 5;
+
+    const certificateId = `GPS-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+    await saveToFile({
       certificateId,
       propertyId: normalizedPropertyId,
       coordinates: normalizedCoordinates,
-      calculatedArea: Number(serverCalculatedArea.toFixed(2)),
-      serverCalculatedArea: Number(serverCalculatedArea.toFixed(2)),
-      clientCalculatedArea: Number.isFinite(numericClientArea) ? Number(numericClientArea.toFixed(2)) : null,
+      calculatedArea: Number(calculatedArea.toFixed(2)),
       registeredArea: Number(numericRegisteredArea.toFixed(2)),
       discrepancyPercent: Number(discrepancyPercent.toFixed(2)),
       verified,
-      submittedAt: now.toISOString()
-    };
-
-    const existing = await readSurveyStore();
-    existing.push(surveyRecord);
-    await writeSurveyStore(existing);
+      submittedAt: new Date().toISOString()
+    });
 
     return successResponse(res, {
-      verified: surveyRecord.verified,
-      calculatedArea: surveyRecord.calculatedArea,
-      registeredArea: surveyRecord.registeredArea,
-      discrepancyPercent: surveyRecord.discrepancyPercent,
-      certificateId: surveyRecord.certificateId
+      verified,
+      calculatedArea: Number(calculatedArea.toFixed(2)),
+      registeredArea: Number(numericRegisteredArea.toFixed(2)),
+      discrepancyPercent: Number(discrepancyPercent.toFixed(2)),
+      certificateId
     });
   } catch (error) {
     return errorResponse(res, 'GPS survey submission failed', 500, error.message);

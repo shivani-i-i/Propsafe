@@ -1,327 +1,195 @@
-const API_BASE = 'http://localhost:3000';
 const SQM_TO_SQFT = 10.7639104167;
+const API_PATH = '/api/gps-survey/submit';
 
-const startSurveyBtn = document.getElementById('startSurveyBtn');
-const markCornerBtn = document.getElementById('markCornerBtn');
-const completeSurveyBtn = document.getElementById('completeSurveyBtn');
-const resetSurveyBtn = document.getElementById('resetSurveyBtn');
 const propertyIdInput = document.getElementById('propertyId');
 const registeredAreaInput = document.getElementById('registeredArea');
-const cornersCount = document.getElementById('cornersCount');
-const areaSqm = document.getElementById('areaSqm');
-const areaSqft = document.getElementById('areaSqft');
-const gpsStatusLabel = document.getElementById('gpsStatusLabel');
-const surveyStatus = document.getElementById('surveyStatus');
-const surveyResult = document.getElementById('surveyResult');
-const surveyResultText = document.getElementById('surveyResultText');
+const getLocationBtn = document.getElementById('getLocationBtn');
+const markCornerBtn = document.getElementById('markCornerBtn');
+const completeSurveyBtn = document.getElementById('completeSurveyBtn');
+const resetBtn = document.getElementById('resetBtn');
+const cornerCounter = document.getElementById('cornerCounter');
+const cornersList = document.getElementById('cornersList');
+const statusText = document.getElementById('statusText');
+const resultCard = document.getElementById('resultCard');
 
-const map = L.map('surveyMap', { zoomControl: true });
-map.setView([13.0827, 80.2707], 17);
+let currentLocation = null;
+let corners = [];
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 22,
-  attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
-
-let watchId = null;
-let currentPosition = null;
-let currentMarker = null;
-let polygonLayer = null;
-let polylineLayer = null;
-let cornerMarkers = [];
-let boundary = [];
-
-function setStatus(text) {
-  surveyStatus.textContent = text;
+function calculateArea(coords) {
+  let area = 0;
+  const n = coords.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += coords[i].lat * coords[j].lng;
+    area -= coords[j].lat * coords[i].lng;
+  }
+  return Math.abs(area / 2) * 111319.9 * 111319.9;
 }
 
-function formatNumber(value) {
+function setStatus(message) {
+  statusText.textContent = message;
+}
+
+function format(value) {
   return Number(value || 0).toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
 }
 
-function toMetersPoints(coords) {
-  if (coords.length < 3) return [];
+function updateCornersUI() {
+  cornerCounter.textContent = `Corners marked: ${corners.length}`;
+  completeSurveyBtn.disabled = corners.length < 3;
 
-  const lat0 = coords.reduce((sum, [lat]) => sum + lat, 0) / coords.length;
-  const lng0 = coords.reduce((sum, [, lng]) => sum + lng, 0) / coords.length;
-  const latScale = 111320;
-  const lngScale = 111320 * Math.cos((lat0 * Math.PI) / 180);
-
-  return coords.map(([lat, lng]) => [
-    (lng - lng0) * lngScale,
-    (lat - lat0) * latScale
-  ]);
+  cornersList.innerHTML = corners
+    .map((corner, index) => `<li>Corner ${index + 1}: ${corner.lat.toFixed(6)}, ${corner.lng.toFixed(6)}</li>`)
+    .join('');
 }
 
-function shoelaceArea(coords) {
-  const points = toMetersPoints(coords);
-  if (points.length < 3) return 0;
-
-  let area = 0;
-  for (let index = 0; index < points.length; index += 1) {
-    const [x1, y1] = points[index];
-    const [x2, y2] = points[(index + 1) % points.length];
-    area += x1 * y2 - x2 * y1;
-  }
-  return Math.abs(area / 2);
+function getApiUrl() {
+  return window.location.port === '3000' ? API_PATH : `http://localhost:3000${API_PATH}`;
 }
 
-function refreshMapShape() {
-  if (polygonLayer) {
-    map.removeLayer(polygonLayer);
-    polygonLayer = null;
-  }
+function showResult(data) {
+  const isMatch = Boolean(data.verified);
+  const badgeClass = isMatch ? 'match' : 'mismatch';
+  const badgeText = isMatch ? 'MATCH' : 'MISMATCH';
 
-  if (polylineLayer) {
-    map.removeLayer(polylineLayer);
-    polylineLayer = null;
-  }
-
-  if (boundary.length >= 3) {
-    polygonLayer = L.polygon(boundary, {
-      color: '#00B4D8',
-      weight: 3,
-      fillColor: '#00B4D8',
-      fillOpacity: 0.24
-    }).addTo(map);
-  } else if (boundary.length >= 2) {
-    polylineLayer = L.polyline(boundary, {
-      color: '#00B4D8',
-      weight: 3,
-      dashArray: '6, 6'
-    }).addTo(map);
-  }
-
-  if (boundary.length > 0) {
-    const group = L.featureGroup([...cornerMarkers, ...(polygonLayer ? [polygonLayer] : []), ...(polylineLayer ? [polylineLayer] : [])]);
-    map.fitBounds(group.getBounds().pad(0.2));
-  }
+  resultCard.className = 'result show';
+  resultCard.innerHTML = `
+    <div class="line"><strong>Recorded Area:</strong> ${format(data.calculatedArea)} sq.m (${format(data.calculatedArea * SQM_TO_SQFT)} sq.ft)</div>
+    <div class="line"><strong>Registered Area:</strong> ${format(data.registeredArea)} sq.m</div>
+    <div class="line"><strong>Discrepancy:</strong> ${format(data.discrepancyPercent)}%</div>
+    <div class="line"><span class="badge ${badgeClass}">${badgeText}</span></div>
+    <div class="line"><strong>Certificate ID:</strong> ${data.certificateId}</div>
+  `;
 }
 
-function refreshAreaStats() {
-  const areaMeters = shoelaceArea(boundary);
-  const areaFeet = areaMeters * SQM_TO_SQFT;
+function validateInputs() {
+  const propertyId = String(propertyIdInput.value || '').trim();
+  const registeredArea = Number(registeredAreaInput.value);
 
-  cornersCount.textContent = String(boundary.length);
-  areaSqm.textContent = formatNumber(areaMeters);
-  areaSqft.textContent = formatNumber(areaFeet);
-
-  completeSurveyBtn.disabled = boundary.length < 3;
-
-  if (boundary.length < 3) {
-    setStatus('Mark at least 3 corners to compute a valid area polygon.');
-  } else {
-    setStatus('Boundary polygon updated. Continue marking or complete survey.');
+  if (!propertyId) {
+    throw new Error('Property ID is required.');
   }
+
+  if (!Number.isFinite(registeredArea) || registeredArea <= 0) {
+    throw new Error('Registered area must be a positive number.');
+  }
+
+  if (!Array.isArray(corners) || corners.length < 3) {
+    throw new Error('At least 3 corners are required to complete survey.');
+  }
+
+  return { propertyId, registeredArea };
 }
 
-function markCurrentCorner() {
-  if (!currentPosition) {
-    setStatus('Waiting for GPS fix. Please allow location and wait a moment.');
-    return;
-  }
-
-  const point = [currentPosition.lat, currentPosition.lng];
-  boundary.push(point);
-
-  const marker = L.circleMarker(point, {
-    radius: 6,
-    color: '#00B4D8',
-    fillColor: '#00B4D8',
-    fillOpacity: 0.9,
-    weight: 2
-  }).addTo(map);
-
-  marker.bindTooltip(`Corner ${boundary.length}`, {
-    permanent: true,
-    direction: 'top',
-    offset: [0, -8],
-    className: 'leaflet-tooltip'
-  });
-
-  cornerMarkers.push(marker);
-  refreshMapShape();
-  refreshAreaStats();
-}
-
-function resetSurvey() {
-  if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
-
-  boundary = [];
-  currentPosition = null;
-
-  if (currentMarker) {
-    map.removeLayer(currentMarker);
-    currentMarker = null;
-  }
-
-  if (polygonLayer) {
-    map.removeLayer(polygonLayer);
-    polygonLayer = null;
-  }
-
-  if (polylineLayer) {
-    map.removeLayer(polylineLayer);
-    polylineLayer = null;
-  }
-
-  cornerMarkers.forEach((marker) => map.removeLayer(marker));
-  cornerMarkers = [];
-
-  surveyResult.className = 'gps-result';
-  surveyResultText.textContent = '';
-  surveyResult.style.display = 'none';
-
-  markCornerBtn.disabled = true;
-  completeSurveyBtn.disabled = true;
-  gpsStatusLabel.textContent = 'Not started';
-  setStatus('Survey reset. Press “Start GPS Survey” to begin again.');
-  refreshAreaStats();
-  map.setView([13.0827, 80.2707], 17);
-}
-
-function startSurvey() {
+function getMyLocation() {
   if (!navigator.geolocation) {
     setStatus('Geolocation is not supported by this browser.');
-    gpsStatusLabel.textContent = 'Unsupported';
     return;
   }
 
-  if (watchId !== null) {
-    setStatus('GPS tracking already active. Use “Mark Boundary Corner” at each corner.');
-    return;
-  }
+  setStatus('Getting current location...');
 
-  setStatus('Requesting location permission...');
-
-  watchId = navigator.geolocation.watchPosition(
+  navigator.geolocation.getCurrentPosition(
     (position) => {
-      const { latitude, longitude, accuracy } = position.coords;
-      currentPosition = { lat: latitude, lng: longitude, accuracy };
+      currentLocation = {
+        lat: Number(position.coords.latitude),
+        lng: Number(position.coords.longitude)
+      };
 
-      if (!currentMarker) {
-        currentMarker = L.marker([latitude, longitude]).addTo(map);
-      } else {
-        currentMarker.setLatLng([latitude, longitude]);
-      }
-
-      currentMarker.bindPopup(`Current Position<br/>Accuracy: ±${Math.round(accuracy)}m`);
-      map.panTo([latitude, longitude]);
-
-      gpsStatusLabel.textContent = `Tracking (±${Math.round(accuracy)}m)`;
       markCornerBtn.disabled = false;
-      setStatus('GPS active. Walk to each boundary corner and click “Mark Boundary Corner”.');
+      setStatus(`Location ready: ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
     },
     (error) => {
-      const message = error.code === error.PERMISSION_DENIED
-        ? 'Location permission denied. Please allow GPS access in browser settings.'
-        : 'Unable to get GPS location. Try moving outdoors and retry.';
-
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-
-      gpsStatusLabel.textContent = 'Permission/Error';
-      setStatus(message);
+      currentLocation = null;
       markCornerBtn.disabled = true;
+      setStatus(`Unable to get location: ${error.message}`);
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 15000
+      timeout: 15000,
+      maximumAge: 0
     }
   );
 }
 
+function markCorner() {
+  if (!currentLocation) {
+    setStatus('Get location first before marking corner.');
+    return;
+  }
+
+  corners.push({
+    lat: currentLocation.lat,
+    lng: currentLocation.lng
+  });
+
+  updateCornersUI();
+  setStatus(`Corner ${corners.length} marked.`);
+}
+
 async function completeSurvey() {
-  if (boundary.length < 3) {
-    setStatus('Need at least 3 corners before completing survey.');
-    return;
-  }
-
-  const registeredArea = Number(registeredAreaInput.value);
-  const propertyId = propertyIdInput.value.trim();
-
-  if (!propertyId) {
-    setStatus('Please enter Property ID before completing survey.');
-    propertyIdInput.focus();
-    return;
-  }
-
-  if (!Number.isFinite(registeredArea) || registeredArea <= 0) {
-    setStatus('Please enter a valid registered area (sq. meters).');
-    registeredAreaInput.focus();
-    return;
-  }
-
-  const calculatedArea = shoelaceArea(boundary);
-  completeSurveyBtn.disabled = true;
-  completeSurveyBtn.textContent = 'Submitting...';
-
   try {
-    const response = await fetch(`${API_BASE}/api/gps-survey/submit`, {
+    const { propertyId, registeredArea } = validateInputs();
+
+    const areaInSqMeters = calculateArea(corners);
+    if (!Number.isFinite(areaInSqMeters) || areaInSqMeters <= 0) {
+      throw new Error('Calculated area is invalid. Please re-mark corners.');
+    }
+
+    console.log('Coordinates before sending:', corners);
+
+    completeSurveyBtn.disabled = true;
+    completeSurveyBtn.textContent = 'Submitting...';
+
+    const response = await fetch(getApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        coordinates: boundary,
-        calculatedArea,
+        coordinates: corners,
+        calculatedArea: areaInSqMeters,
         propertyId,
         registeredArea
       })
     });
 
-    const payload = await response.json();
-    if (!response.ok || !payload?.success) {
-      const message = payload?.error?.message || payload?.message || `Request failed (${response.status})`;
-      throw new Error(message);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const errMsg = payload?.error?.message || payload?.message || `Request failed (${response.status})`;
+      throw new Error(errMsg);
     }
 
-    const data = payload.data || payload;
-
-    const isMatch = Boolean(data.verified);
-    surveyResult.className = `gps-result show ${isMatch ? 'ok' : 'warn'}`;
-    surveyResult.style.display = 'block';
-    surveyResultText.innerHTML = `
-      <strong>${isMatch ? '✅ Match' : '⚠️ Mismatch'}:</strong> Survey complete for <strong>${propertyId}</strong><br/>
-      Recorded Area: <strong>${formatNumber(data.calculatedArea)} sq.m</strong> (${formatNumber(data.calculatedArea * SQM_TO_SQFT)} sq.ft)<br/>
-      Registered Area: <strong>${formatNumber(data.registeredArea)} sq.m</strong><br/>
-      Discrepancy: <strong>${formatNumber(data.discrepancyPercent)}%</strong><br/>
-      Certificate ID: <strong>${data.certificateId}</strong>
-    `;
-
-    setStatus(isMatch
-      ? 'Survey verified within allowed 5% discrepancy range.'
-      : 'Survey completed but discrepancy exceeded 5%. Please verify documents.');
+    const data = payload?.data || payload;
+    showResult(data);
+    setStatus('Survey submitted successfully.');
   } catch (error) {
-    surveyResult.className = 'gps-result show warn';
-    surveyResult.style.display = 'block';
-    surveyResultText.textContent = `Submission failed: ${error.message}`;
-    setStatus('Unable to submit survey. Ensure backend is running on port 3000.');
+    resultCard.className = 'result show';
+    resultCard.innerHTML = `<div class="line" style="color:#ef4444;"><strong>Error:</strong> ${error.message}</div>`;
+    setStatus(error.message);
   } finally {
-    completeSurveyBtn.disabled = boundary.length < 3;
+    completeSurveyBtn.disabled = corners.length < 3;
     completeSurveyBtn.textContent = 'Complete Survey';
   }
 }
 
-startSurveyBtn.addEventListener('click', startSurvey);
-markCornerBtn.addEventListener('click', markCurrentCorner);
+function resetSurvey() {
+  currentLocation = null;
+  corners = [];
+  markCornerBtn.disabled = true;
+  completeSurveyBtn.disabled = true;
+  resultCard.className = 'result';
+  resultCard.innerHTML = '';
+  updateCornersUI();
+  setStatus('Survey reset. Tap “Get My Location” to continue.');
+}
+
+getLocationBtn.addEventListener('click', getMyLocation);
+markCornerBtn.addEventListener('click', markCorner);
 completeSurveyBtn.addEventListener('click', completeSurvey);
-resetSurveyBtn.addEventListener('click', resetSurvey);
+resetBtn.addEventListener('click', resetSurvey);
 
-map.on('click', () => {
-  if (!markCornerBtn.disabled) {
-    markCurrentCorner();
-  }
-});
-
-refreshAreaStats();
-setStatus('Press “Start GPS Survey” to request location permission.');
+updateCornersUI();

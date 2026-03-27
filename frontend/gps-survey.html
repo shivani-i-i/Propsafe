@@ -3,270 +3,254 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PropSafe — GPS Property Survey</title>
-  <meta name="description" content="GPS boundary survey for property area verification" />
-
+  <title>PropSafe — GPS Survey</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
-
-  <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --gps-navy: #0B1E3F;
-      --gps-cyan: #00B4D8;
+      --bg: #0B1E3F;
+      --accent: #00B4D8;
+      --accent-soft: rgba(0, 180, 216, 0.18);
+      --text: #e8f6ff;
+      --muted: #9cb7cd;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --card: rgba(8, 22, 46, 0.92);
+      --border: rgba(0, 180, 216, 0.32);
     }
 
+    * { box-sizing: border-box; }
+
     body {
-      background: radial-gradient(ellipse at top, rgba(0, 180, 216, 0.12), transparent 55%), var(--gps-navy);
+      margin: 0;
+      font-family: 'DM Sans', sans-serif;
+      background: radial-gradient(circle at top, rgba(0, 180, 216, 0.14), transparent 55%), var(--bg);
+      color: var(--text);
       min-height: 100vh;
     }
 
-    .gps-wrap {
-      width: min(1100px, 94vw);
-      margin: 28px auto 42px;
+    .container {
+      width: min(880px, 94vw);
+      margin: 24px auto 40px;
     }
 
-    .gps-top {
+    .header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
-    .gps-link {
-      border: 1px solid rgba(0, 180, 216, 0.35);
-      color: var(--gps-cyan);
+    .title {
+      font-family: 'Syne', sans-serif;
+      font-size: 30px;
+      margin: 0;
+    }
+
+    .sub {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .back {
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      background: var(--accent-soft);
       padding: 8px 12px;
       border-radius: 10px;
       font-weight: 600;
       font-size: 13px;
-      background: rgba(11, 30, 63, 0.65);
+      white-space: nowrap;
     }
 
-    .gps-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: 1.15fr 0.85fr;
-    }
-
-    .gps-card {
-      background: rgba(11, 30, 63, 0.82);
-      border: 1px solid rgba(0, 180, 216, 0.3);
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 18px;
       padding: 18px;
-      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
     }
 
-    #surveyMap {
-      height: min(70vh, 620px);
-      border-radius: 14px;
-      border: 1px solid rgba(0, 180, 216, 0.45);
-      overflow: hidden;
+    .field {
+      margin-bottom: 12px;
     }
 
-    .gps-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 28px;
-      line-height: 1.2;
-      margin-bottom: 6px;
-    }
-
-    .gps-sub {
-      color: #b7c8df;
-      font-size: 14px;
-      margin-bottom: 16px;
-    }
-
-    .gps-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .gps-btn {
-      border: none;
-      background: linear-gradient(135deg, var(--gps-cyan), #56dbf2);
-      color: #032136;
-      font-weight: 700;
-      border-radius: 10px;
-      padding: 10px 14px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .gps-btn.alt {
-      background: transparent;
-      color: var(--gps-cyan);
-      border: 1px solid rgba(0, 180, 216, 0.4);
-    }
-
-    .gps-btn:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .gps-field {
-      margin-bottom: 10px;
-    }
-
-    .gps-field label {
+    .field label {
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
       font-size: 12px;
-      color: #9db4d3;
-      font-weight: 600;
-      letter-spacing: .02em;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.02em;
     }
 
-    .gps-input {
+    .input {
       width: 100%;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      border: 1px solid rgba(0, 180, 216, 0.35);
-      background: rgba(0, 0, 0, 0.22);
-      color: #e7f5ff;
-      padding: 10px;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--text);
       font-size: 14px;
       outline: none;
     }
 
-    .gps-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.2);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
       gap: 10px;
-      margin-top: 12px;
+      margin: 8px 0 14px;
     }
 
-    .gps-stat {
-      background: rgba(0, 0, 0, 0.22);
-      border: 1px solid rgba(0, 180, 216, 0.25);
-      border-radius: 12px;
-      padding: 10px;
-    }
-
-    .gps-stat .k {
-      color: #90a8c8;
-      font-size: 12px;
-      margin-bottom: 2px;
-    }
-
-    .gps-stat .v {
-      font-size: 18px;
-      font-weight: 700;
-      color: #cbf5ff;
-    }
-
-    .gps-status {
-      margin-top: 12px;
-      padding: 10px;
-      border: 1px solid rgba(0, 180, 216, 0.3);
+    .btn {
+      border: none;
       border-radius: 10px;
-      background: rgba(0, 0, 0, 0.2);
-      color: #b9eaf7;
-      font-size: 13px;
-      min-height: 42px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #06263a;
+      background: linear-gradient(135deg, #00B4D8, #3fd0eb);
     }
 
-    .gps-result {
-      margin-top: 14px;
-      display: none;
+    .btn.alt {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .counter {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 6px 0;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      min-height: 20px;
+    }
+
+    .corners {
+      border: 1px solid var(--border);
       border-radius: 12px;
       padding: 12px;
-      border: 1px solid rgba(0, 180, 216, 0.3);
-      background: rgba(0, 0, 0, 0.22);
+      background: rgba(0, 0, 0, 0.14);
+      margin-bottom: 14px;
     }
 
-    .gps-result.show {
+    .corners h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+    }
+
+    .corners ol {
+      margin: 0;
+      padding-left: 18px;
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .corners li {
+      margin-bottom: 6px;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .result {
+      display: none;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.16);
+      padding: 14px;
+    }
+
+    .result.show {
       display: block;
     }
 
-    .gps-result.ok {
-      border-color: rgba(34, 197, 94, 0.4);
-      background: rgba(34, 197, 94, 0.1);
+    .line {
+      font-size: 13.5px;
+      margin-bottom: 6px;
     }
 
-    .gps-result.warn {
-      border-color: rgba(239, 68, 68, 0.45);
-      background: rgba(239, 68, 68, 0.12);
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
     }
 
-    @media (max-width: 920px) {
-      .gps-grid {
-        grid-template-columns: 1fr;
-      }
+    .badge.match {
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      background: rgba(34, 197, 94, 0.13);
+    }
 
-      #surveyMap {
-        height: 55vh;
-      }
+    .badge.mismatch {
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      background: rgba(239, 68, 68, 0.14);
     }
   </style>
 </head>
 <body>
-  <div class="gps-wrap">
-    <div class="gps-top">
+  <main class="container">
+    <div class="header">
       <div>
-        <div class="gps-title">📍 GPS Property Survey</div>
-        <div class="gps-sub">Walk the property boundary, tap corners on the map, and verify area against registered documents.</div>
+        <h1 class="title">📍 GPS Survey</h1>
+        <p class="sub">Mark property corners using current GPS location and verify against registered area.</p>
       </div>
-      <a class="gps-link" href="index.html">← Back to PropSafe</a>
+      <a class="back" href="index.html">← Back</a>
     </div>
 
-    <div class="gps-grid">
-      <section class="gps-card">
-        <div id="surveyMap"></div>
-      </section>
+    <section class="card">
+      <div class="field">
+        <label for="propertyId">Property ID</label>
+        <input id="propertyId" class="input" type="text" placeholder="e.g. PROP-TN-2026-001" />
+      </div>
 
-      <section class="gps-card">
-        <div class="gps-actions">
-          <button id="startSurveyBtn" class="gps-btn">Start GPS Survey</button>
-          <button id="markCornerBtn" class="gps-btn alt" disabled>Mark Boundary Corner</button>
-          <button id="completeSurveyBtn" class="gps-btn" disabled>Complete Survey</button>
-          <button id="resetSurveyBtn" class="gps-btn alt">Reset</button>
-        </div>
+      <div class="field">
+        <label for="registeredArea">Registered Area (sq.m)</label>
+        <input id="registeredArea" class="input" type="number" min="0" step="0.01" placeholder="e.g. 185.75" />
+      </div>
 
-        <div class="gps-field">
-          <label for="propertyId">Property ID</label>
-          <input id="propertyId" class="gps-input" type="text" placeholder="e.g. PROP-TN-2026-001" />
-        </div>
+      <div class="row">
+        <button id="getLocationBtn" class="btn">Get My Location</button>
+        <button id="markCornerBtn" class="btn alt" disabled>Mark Corner</button>
+        <button id="completeSurveyBtn" class="btn" disabled>Complete Survey</button>
+        <button id="resetBtn" class="btn alt">Reset</button>
+      </div>
 
-        <div class="gps-field">
-          <label for="registeredArea">Registered Document Area (sq. meters)</label>
-          <input id="registeredArea" class="gps-input" type="number" min="0" step="0.01" placeholder="e.g. 185.75" />
-        </div>
+      <div class="counter" id="cornerCounter">Corners marked: 0</div>
+      <div class="status" id="statusText">Tap “Get My Location” to start.</div>
 
-        <div class="gps-stats">
-          <div class="gps-stat">
-            <div class="k">Corners Marked</div>
-            <div class="v" id="cornersCount">0</div>
-          </div>
-          <div class="gps-stat">
-            <div class="k">Live Area (sq. meters)</div>
-            <div class="v" id="areaSqm">0.00</div>
-          </div>
-          <div class="gps-stat">
-            <div class="k">Live Area (sq. ft)</div>
-            <div class="v" id="areaSqft">0.00</div>
-          </div>
-          <div class="gps-stat">
-            <div class="k">GPS Status</div>
-            <div class="v" id="gpsStatusLabel" style="font-size:14px;">Not started</div>
-          </div>
-        </div>
+      <div class="corners">
+        <h3>Marked Corners</h3>
+        <ol id="cornersList"></ol>
+      </div>
 
-        <div class="gps-status" id="surveyStatus">Press “Start GPS Survey” to request location permission.</div>
+      <div id="resultCard" class="result"></div>
+    </section>
+  </main>
 
-        <div id="surveyResult" class="gps-result">
-          <div id="surveyResultText"></div>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script type="module" src="js/gps-survey.js"></script>
 </body>
 </html>
