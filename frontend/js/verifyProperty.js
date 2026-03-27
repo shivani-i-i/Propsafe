@@ -1,14 +1,25 @@
 import { verifyPropertyRegistration, getMockMunicipalResult } from './api.js';
 import { showToast } from './toast.js';
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function statusCell(label, status) {
   const isGood = ['VALID', 'UP_TO_DATE', 'APPROVED', 'COMPLIANT'].includes(String(status));
   const icon = isGood ? '✅' : '❌';
   const className = isGood ? 'verify-ok' : 'verify-bad';
+  const safeLabel = escapeHtml(label);
+  const safeStatus = escapeHtml(status);
   return `
     <div class="verify-row ${className}">
-      <div class="verify-key">${label}</div>
-      <div class="verify-value">${icon} ${status}</div>
+      <div class="verify-key">${safeLabel}</div>
+      <div class="verify-value">${icon} ${safeStatus}</div>
     </div>`;
 }
 
@@ -47,7 +58,7 @@ export async function runMunicipalVerification() {
       showToast('Property verification completed.', 'success');
     } catch (error) {
       const message = String(error?.message || '');
-      const networkDown = /failed to fetch|networkerror|load failed|fetch/i.test(message);
+      const networkDown = /failed to fetch|networkerror|load failed|fetch|server error 5\d\d/i.test(message);
 
       if (networkDown) {
         await new Promise((resolve) => setTimeout(resolve, 600));
@@ -60,7 +71,7 @@ export async function runMunicipalVerification() {
 
     resultArea.innerHTML = `
       <div class="verify-card animate-fade-in-up">
-        <div class="verify-head">Verification Report — ${data.registrationNumber || registrationNumber}</div>
+        <div class="verify-head">Verification Report — ${escapeHtml(data.registrationNumber || registrationNumber)}</div>
         ${statusCell('RERA Status', data.reraStatus)}
         ${statusCell('Tax Records', data.taxRecordStatus)}
         ${statusCell('Building Permit', data.buildingPermitStatus)}
@@ -74,7 +85,7 @@ export async function runMunicipalVerification() {
         <div class="error-icon">❌</div>
         <div>
           <div class="error-title">Verification Failed</div>
-          <div class="error-msg">${error?.message || 'Unable to generate municipal verification report right now.'}</div>
+          <div class="error-msg">${escapeHtml(error?.message || 'Unable to generate municipal verification report right now.')}</div>
         </div>
       </div>`;
   } finally {

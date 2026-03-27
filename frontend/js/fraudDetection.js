@@ -154,6 +154,12 @@ function collectFormData() {
 export async function runFraudAnalysis() {
   const btn        = document.getElementById('analyzeBtn');
   const resultArea = document.getElementById('fraudResult');
+
+  if (!btn || !resultArea) {
+    showToast('Fraud analysis UI is not ready. Please refresh and try again.', 'error');
+    return;
+  }
+
   const formData   = collectFormData();
 
   if (!formData.location.trim()) {

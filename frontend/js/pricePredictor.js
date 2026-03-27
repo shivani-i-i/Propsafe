@@ -11,6 +11,11 @@ export async function runPricePredictor() {
   const btn        = document.getElementById('predictBtn');
   const resultArea = document.getElementById('priceResult');
 
+  if (!btn || !resultArea) {
+    showToast('Price predictor UI is not ready. Please refresh and try again.', 'error');
+    return;
+  }
+
   const formData = {
     locality:     document.getElementById('locality')?.value || 'Velachery, Chennai',
     currentValue: document.getElementById('currentMarketValue')?.value || '50',
@@ -73,6 +78,11 @@ export async function runLoanMatcher() {
   const currentValueInput = document.getElementById('currentMarketValue');
   const resultArea = document.getElementById('loanMatchResult');
   const btn = document.getElementById('loanMatchBtn');
+
+  if (!incomeInput || !localityInput || !currentValueInput || !resultArea || !btn) {
+    showToast('Loan matcher UI is not ready. Please refresh and try again.', 'error');
+    return;
+  }
 
   const buyerIncome = Number(incomeInput?.value || 0);
   const propertyValueLakhs = Number(currentValueInput?.value || 0);

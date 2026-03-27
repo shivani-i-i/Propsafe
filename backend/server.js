@@ -22,7 +22,7 @@ dotenv.config({ path: join(__dirname, '.env') });
 await connectDB();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
@@ -42,5 +42,5 @@ app.use('/api/loan', loanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 app.listen(PORT, () => {
-  console.log('Server running on port 3000');
+  console.log(`Server running on port ${PORT}`);
 });
