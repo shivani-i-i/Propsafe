@@ -58,35 +58,6 @@
     "submittedAt": "2026-03-24T09:55:34.813Z"
   },
   {
-    "certificateId": "GPS-2026-X5WFX0",
-    "propertyId": "PROP-TN-2026-SMOKE2",
-    "coordinates": [
-      [
-        13.0827,
-        80.2707
-      ],
-      [
-        13.0828,
-        80.271
-      ],
-      [
-        13.0825,
-        80.2712
-      ],
-      [
-        13.0824,
-        80.2708
-      ]
-    ],
-    "calculatedArea": 1448.46,
-    "serverCalculatedArea": 1448.46,
-    "clientCalculatedArea": 780,
-    "registeredArea": 790,
-    "discrepancyPercent": 83.35,
-    "verified": false,
-    "submittedAt": "2026-03-24T10:02:25.767Z"
-  },
-  {
     "certificateId": "GPS-2026-RF2K25",
     "propertyId": "TN-CHN-PT-2026-045678",
     "coordinates": [
@@ -306,74 +277,5 @@
     "discrepancyPercent": 88.23,
     "verified": false,
     "submittedAt": "2026-03-24T10:16:41.292Z"
-  },
-  {
-    "certificateId": "GPS-2026-HAZ6OA",
-    "propertyId": "P-1",
-    "coordinates": [
-      {
-        "lat": 12.9,
-        "lng": 80.2
-      },
-      {
-        "lat": 12.9005,
-        "lng": 80.2005
-      },
-      {
-        "lat": 12.901,
-        "lng": 80.2
-      }
-    ],
-    "calculatedArea": 3098.03,
-    "registeredArea": 1000,
-    "discrepancyPercent": 209.8,
-    "verified": false,
-    "submittedAt": "2026-03-27T06:17:07.447Z"
-  },
-  {
-    "certificateId": "GPS-2026-SJJLBU",
-    "propertyId": "P-1",
-    "coordinates": [
-      {
-        "lat": 12.9,
-        "lng": 80.2
-      },
-      {
-        "lat": 12.9005,
-        "lng": 80.2005
-      },
-      {
-        "lat": 12.901,
-        "lng": 80.2
-      }
-    ],
-    "calculatedArea": 3098.03,
-    "registeredArea": 1000,
-    "discrepancyPercent": 209.8,
-    "verified": false,
-    "submittedAt": "2026-03-27T06:17:25.759Z"
-  },
-  {
-    "certificateId": "GPS-2026-JA63SR",
-    "propertyId": "P-1",
-    "coordinates": [
-      {
-        "lat": 12.9,
-        "lng": 80.2
-      },
-      {
-        "lat": 12.9005,
-        "lng": 80.2005
-      },
-      {
-        "lat": 12.901,
-        "lng": 80.2
-      }
-    ],
-    "calculatedArea": 3098.03,
-    "registeredArea": 1000,
-    "discrepancyPercent": 209.8,
-    "verified": false,
-    "submittedAt": "2026-03-27T06:24:58.408Z"
   }
 ]
