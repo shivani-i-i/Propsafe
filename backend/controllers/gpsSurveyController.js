@@ -1,5 +1,5 @@
 import { successResponse, errorResponse } from '../utils/responses.js';
-import { calculateArea, saveToFile } from '../services/gpsSurveyService.js';
+import { calculateArea, saveToFile, getAllSurveys, getSurveyByCertificateId } from '../services/gpsSurveyService.js';
 
 function normalizeCoordinates(coordinates) {
   if (!Array.isArray(coordinates)) return [];
@@ -65,5 +65,40 @@ export async function submitGpsSurvey(req, res) {
     });
   } catch (error) {
     return errorResponse(res, 'GPS survey submission failed', 500, error.message);
+  }
+}
+
+export async function browseSurveys(req, res) {
+  try {
+    const surveys = await getAllSurveys();
+    return successResponse(res, surveys.map(s => ({
+      certificateId: s.certificateId,
+      propertyId: s.propertyId,
+      verified: s.verified,
+      calculatedArea: s.calculatedArea,
+      registeredArea: s.registeredArea,
+      discrepancyPercent: s.discrepancyPercent,
+      submittedAt: s.submittedAt
+    })));
+  } catch (error) {
+    return errorResponse(res, 'Failed to fetch surveys', 500, error.message);
+  }
+}
+
+export async function getSurveyDetails(req, res) {
+  try {
+    const { certificateId } = req.params;
+    if (!certificateId || !String(certificateId).trim()) {
+      return errorResponse(res, 'Certificate ID is required', 400);
+    }
+
+    const survey = await getSurveyByCertificateId(String(certificateId).trim());
+    if (!survey) {
+      return errorResponse(res, 'Survey not found', 404);
+    }
+
+    return successResponse(res, survey);
+  } catch (error) {
+    return errorResponse(res, 'Failed to fetch survey details', 500, error.message);
   }
 }

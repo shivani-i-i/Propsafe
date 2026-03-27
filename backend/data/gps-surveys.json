@@ -277,5 +277,78 @@
     "discrepancyPercent": 88.23,
     "verified": false,
     "submittedAt": "2026-03-24T10:16:41.292Z"
+  },
+  {
+    "certificateId": "GPS-2026-PBQQ32",
+    "propertyId": "PROP-TN-2026-001",
+    "coordinates": [
+      {
+        "lat": 13.0827,
+        "lng": 80.2707
+      },
+      {
+        "lat": 13.084,
+        "lng": 80.2715
+      },
+      {
+        "lat": 13.0835,
+        "lng": 80.2699
+      }
+    ],
+    "calculatedArea": 10409.38,
+    "registeredArea": 520,
+    "discrepancyPercent": 1901.8,
+    "verified": false,
+    "submittedAt": "2026-03-27T06:46:20.377Z"
+  },
+  {
+    "certificateId": "GPS-2026-I9FJ1F",
+    "propertyId": "PROP-TN-2026-001",
+    "coordinates": [
+      {
+        "lat": 13.0827,
+        "lng": 80.2707
+      },
+      {
+        "lat": 13.084,
+        "lng": 80.2715
+      },
+      {
+        "lat": 13.0835,
+        "lng": 80.2699
+      }
+    ],
+    "calculatedArea": 10080.98,
+    "registeredArea": 520,
+    "discrepancyPercent": 1838.65,
+    "verified": false,
+    "submittedAt": "2026-03-27T06:48:53.720Z"
+  },
+  {
+    "certificateId": "GPS-2026-Q5M29K",
+    "propertyId": "TEST-001",
+    "coordinates": [
+      {
+        "lat": 13,
+        "lng": 80
+      },
+      {
+        "lat": 13.0001,
+        "lng": 80
+      },
+      {
+        "lat": 13.0001,
+        "lng": 80.0001
+      },
+      {
+        "lat": 13,
+        "lng": 80.0001
+      }
+    ],
+    "calculatedArea": 120.05,
+    "registeredArea": 530,
+    "discrepancyPercent": 77.35,
+    "verified": false,
+    "submittedAt": "2026-03-27T06:49:18.617Z"
   }
 ]

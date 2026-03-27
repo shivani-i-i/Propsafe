@@ -16,14 +16,24 @@ let currentLocation = null;
 let corners = [];
 
 function calculateArea(coords) {
+  // Shoelace formula: converts lat/lng to approximate square meters
+  if (coords.length < 3) return 0;
+  
   let area = 0;
   const n = coords.length;
+  const avgLat = coords.reduce((sum, p) => sum + p.lat, 0) / n;
+  const latToMeters = 111000; // ~111 km per degree latitude
+  const lngToMeters = 111000 * Math.cos((avgLat * Math.PI) / 180); // adjust for latitude
+  
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    area += coords[i].lat * coords[j].lng;
-    area -= coords[j].lat * coords[i].lng;
+    const x1 = coords[i].lng * lngToMeters;
+    const y1 = coords[i].lat * latToMeters;
+    const x2 = coords[j].lng * lngToMeters;
+    const y2 = coords[j].lat * latToMeters;
+    area += x1 * y2 - x2 * y1;
   }
-  return Math.abs(area / 2) * 111319.9 * 111319.9;
+  return Math.abs(area / 2);
 }
 
 function setStatus(message) {
@@ -105,7 +115,19 @@ function getMyLocation() {
     (error) => {
       currentLocation = null;
       markCornerBtn.disabled = true;
-      setStatus(`Unable to get location: ${error.message}`);
+      
+      let errorMsg = 'Unable to get location';
+      if (error.code === 1) {
+        errorMsg = 'Location permission denied. Enable location access in browser settings.';
+      } else if (error.code === 2) {
+        errorMsg = 'Location unavailable. Check your device\'s GPS or try again.';
+      } else if (error.code === 3) {
+        errorMsg = 'Location request timed out. Please try again.';
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      setStatus(`❌ ${errorMsg}`);
     },
     {
       enableHighAccuracy: true,
