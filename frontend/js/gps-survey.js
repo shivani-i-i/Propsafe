@@ -1,3 +1,5 @@
+import { loadGoogleMapsScript } from '../config.js';
+
 const SQM_TO_SQFT = 10.7639104167;
 const API_PATH = '/api/gps-survey/submit';
 
@@ -22,8 +24,17 @@ let markers = [];
 let polygon = null;
 const DEFAULT_CENTER = { lat: 13.0827, lng: 80.2707 }; // Chennai, India
 
-// Initialize map when page loads
-window.addEventListener('load', initMap);
+// Initialize when page loads
+window.addEventListener('load', async () => {
+  try {
+    await loadGoogleMapsScript();
+    initMap();
+    updateCornersUI();
+  } catch (error) {
+    console.error('Failed to load Google Maps:', error.message);
+    setStatus(`❌ Map unavailable: ${error.message}`);
+  }
+});
 
 function calculateArea(coords) {
   // Shoelace formula: converts lat/lng to approximate square meters
@@ -323,5 +334,3 @@ getLocationBtn.addEventListener('click', getMyLocation);
 markCornerBtn.addEventListener('click', markCorner);
 completeSurveyBtn.addEventListener('click', completeSurvey);
 resetBtn.addEventListener('click', resetSurvey);
-
-updateCornersUI();

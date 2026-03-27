@@ -99,11 +99,40 @@ npm install
 cd ..
 npm install
 
-### 3. Add your API key
-Create backend/.env:
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-MONGODB_URI=your_mongodb_uri_here
-PORT=3000
+### 3. Add your API keys
+
+**For GPS Survey feature (Google Maps):**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project
+3. Enable **Maps JavaScript API** and **Maps Embed API**
+4. Create an API key with IP/HTTP referrer restrictions to your domain only
+5. Copy `frontend/config.json.example` to `frontend/config.json`:
+   ```bash
+   cp frontend/config.json.example frontend/config.json
+   ```
+6. Edit `frontend/config.json` and paste your API key:
+   ```json
+   {
+     "googleMapsApiKey": "your_actual_key_here"
+   }
+   ```
+
+**For other optional features:**
+
+Create `.env` in project root:
+   ```
+   # Optional: Anthropic API for AI chatbot (has fallback)
+   ANTHROPIC_API_KEY=your_key_here
+   
+   # Optional: MongoDB for data persistence (has fallback)
+   MONGODB_URI=mongodb://localhost:27017/propsafe
+   
+   # Optional: Backend port
+   PORT=3000
+   ```
+
+⚠️ **Never commit API keys to git. Both `frontend/config.json` and `.env` are in `.gitignore`.**
 
 ### 4. Start full app (backend + frontend) with one command
 npm run dev
