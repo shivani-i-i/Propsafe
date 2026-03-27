@@ -10,22 +10,28 @@ function resolveApiBases() {
   }
 
   const { protocol, hostname, port } = window.location;
+  const isHttp = protocol === 'http:' || protocol === 'https:';
+  const safeProtocol = isHttp ? protocol : 'http:';
+  const host = hostname || 'localhost';
   const sameOrigin = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
-  const localBackend = `${protocol}//${hostname}:3000`;
+  const hostBackend = `${safeProtocol}//${host}:3000`;
+  const localhostBackend = `${safeProtocol}//localhost:3000`;
+
+  const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+  const isLanIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
 
   // Prefer same-origin in deployed setups, and localhost:3000 for local static frontend.
   if (port === '3000') {
     return [sameOrigin];
   }
 
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    // In local development, frontend often runs on a static server (e.g. :5173)
-    // that does not proxy /api routes. Avoid same-origin fallback to prevent
-    // false 404 errors from the static server.
-    return [localBackend];
+  // In local development, frontend often runs on a static server (e.g. :5173)
+  // that does not proxy /api routes. Prioritize backend on :3000.
+  if (isLocalhost || isLanIp || !isHttp) {
+    return [hostBackend, localhostBackend];
   }
 
-  return [sameOrigin];
+  return [sameOrigin, hostBackend, localhostBackend];
 }
 
 const API_BASES = resolveApiBases();
