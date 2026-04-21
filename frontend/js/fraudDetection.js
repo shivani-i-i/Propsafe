@@ -119,7 +119,6 @@ async function runOCRExtraction(file, listNode) {
       return;
     }
 
-    await sleep(1200);
     data = getMockOCRResult(file.name);
     showToast('OCR service unavailable. Using fallback extraction.', 'warning');
   }
@@ -175,7 +174,7 @@ export async function runFraudAnalysis() {
 
   // Animate pipeline
   resetPipeline();
-  const delays = [0, 700, 1500, 2300, 3100];
+  const delays = [0, 240, 480, 720, 960];
   const timers = delays.map((d, i) => setTimeout(() => setPipelineStep(i), d));
 
   let data;
@@ -184,7 +183,6 @@ export async function runFraudAnalysis() {
     showToast('Fraud analysis completed successfully.', 'success');
   } catch (err) {
     // Use mock fallback
-    await sleep(3500);
     data = getMockFraudResult(formData);
     showToast('AI analysis unavailable. Showing fallback result.', 'warning');
   }
@@ -424,4 +422,3 @@ function getRiskTitle(level) {
   }[level] || 'Analysis Complete';
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

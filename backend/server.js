@@ -13,12 +13,15 @@ import municipalRoutes from './routes/municipal.js';
 import gpsSurveyRoutes from './routes/gpsSurvey.js';
 import loanRoutes from './routes/loan.js';
 import dashboardRoutes from './routes/dashboard.js';
+import agentRoutes from './routes/agent.js';
 import { connectDB } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: join(__dirname, '.env') });
+// Support both backend/.env and project-root .env as documented in README.
+dotenv.config({ path: join(__dirname, '..', '.env') });
+dotenv.config({ path: join(__dirname, '.env'), override: false });
 await connectDB();
 
 const app = express();
@@ -40,6 +43,7 @@ app.use('/api/municipal', municipalRoutes);
 app.use('/api/gps-survey', gpsSurveyRoutes);
 app.use('/api/loan', loanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/agent', agentRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

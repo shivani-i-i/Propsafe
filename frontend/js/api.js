@@ -5,10 +5,6 @@
 
 function resolveApiBases() {
   const configured = String(window.PROPSAFE_API_BASE || '').trim();
-  if (configured) {
-    return [configured.replace(/\/$/, '')];
-  }
-
   const { protocol, hostname, port } = window.location;
   const isHttp = protocol === 'http:' || protocol === 'https:';
   const safeProtocol = isHttp ? protocol : 'http:';
@@ -21,20 +17,44 @@ function resolveApiBases() {
   const isLanIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
 
   // Prefer same-origin in deployed setups, and localhost:3000 for local static frontend.
+  const discovered = [];
   if (port === '3000') {
-    return [sameOrigin];
+    discovered.push(sameOrigin);
+  } else if (isLocalhost || isLanIp || !isHttp) {
+    // In local development, frontend often runs on a static server (e.g. :5173)
+    // that does not proxy /api routes. Prioritize backend on :3000.
+    discovered.push(hostBackend, localhostBackend);
+  } else {
+    discovered.push(sameOrigin, hostBackend, localhostBackend);
   }
 
-  // In local development, frontend often runs on a static server (e.g. :5173)
-  // that does not proxy /api routes. Prioritize backend on :3000.
-  if (isLocalhost || isLanIp || !isHttp) {
-    return [hostBackend, localhostBackend];
+  // If user configured an API base, use it first but keep discovered fallbacks.
+  const bases = configured
+    ? [configured.replace(/\/$/, ''), ...discovered]
+    : discovered;
+
+  const unique = [];
+  for (const base of bases) {
+    if (base && !unique.includes(base)) {
+      unique.push(base);
+    }
   }
 
-  return [sameOrigin, hostBackend, localhostBackend];
+  return unique;
 }
 
 const API_BASES = resolveApiBases();
+const API_REQUEST_TIMEOUT_MS = 3200;
+
+async function fetchWithTimeout(url, options, timeoutMs = API_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /* ─── Generic request helper ─── */
 async function apiRequest(method, path, body = null) {
@@ -51,7 +71,7 @@ async function apiRequest(method, path, body = null) {
 
   for (const base of API_BASES) {
     try {
-      const response = await fetch(`${base}${path}`, options);
+      const response = await fetchWithTimeout(`${base}${path}`, options);
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -214,11 +234,78 @@ export async function extractDocumentData(file) {
 }
 
 export async function verifyPropertyRegistration(registrationNumber) {
-  return apiRequest('POST', '/api/municipal/verify', { registrationNumber });
+  const payload = { registrationNumber };
+
+  const { protocol, hostname, port } = window.location;
+  const host = hostname || 'localhost';
+  const isHttpsPage = protocol === 'https:';
+  const protocols = isHttpsPage ? ['https:', 'http:'] : ['http:'];
+
+  const candidateBases = [];
+
+  // Keep resolved API bases first since users may configure custom backends.
+  for (const base of API_BASES) {
+    if (base && !candidateBases.includes(base)) {
+      candidateBases.push(base);
+    }
+  }
+
+  // Add same host + common localhost variants for resilient local dev.
+  for (const proto of protocols) {
+    const sameHost = `${proto}//${host}:3000`;
+    const localhost = `${proto}//localhost:3000`;
+    const loopback = `${proto}//127.0.0.1:3000`;
+    [sameHost, localhost, loopback].forEach((base) => {
+      if (!candidateBases.includes(base)) {
+        candidateBases.push(base);
+      }
+    });
+  }
+
+  // If frontend is already served from :3000, try current origin directly.
+  if (port === '3000') {
+    const origin = `${protocol}//${host}${port ? `:${port}` : ''}`;
+    if (!candidateBases.includes(origin)) {
+      candidateBases.unshift(origin);
+    }
+  }
+
+  const failures = [];
+  for (const base of candidateBases) {
+    try {
+      const response = await fetchWithTimeout(
+        `${base}/api/municipal/verify`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        },
+        9000
+      );
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errMsg = body?.error?.message || body?.message || `Server error ${response.status}`;
+        failures.push(`${base}: ${errMsg}`);
+        continue;
+      }
+
+      return body?.success && body?.data !== undefined ? body.data : body;
+    } catch (error) {
+      failures.push(`${base}: ${error?.message || 'request failed'}`);
+    }
+  }
+
+  const details = failures.slice(0, 3).join(' | ');
+  throw new Error(details ? `Unable to reach live municipal service. ${details}` : 'Unable to reach live municipal service.');
 }
 
 export async function matchLoanEligibility(payload) {
   return apiRequest('POST', '/api/loan/match', payload);
+}
+
+export async function evaluatePropertyAgent(payload) {
+  return apiRequest('POST', '/api/agent/evaluate', payload);
 }
 
 export async function createLawyerBooking(payload) {
@@ -293,6 +380,70 @@ export function getMockDashboardStats() {
     fraudCasesDetected: 418,
     lawyersConnected: 962,
     source: 'mock'
+  };
+}
+
+export function getMockAgenticEvaluation(payload = {}, previousVerdict = null) {
+  const fraud = getMockFraudResult({
+    ownershipTransfers: payload.transfersLastTwoYears,
+    propertyValue: Math.round((Number(payload.propertyValue || 0) / 100000) || 50),
+    sellerIncome: Math.round((Number(payload.sellerIncome || 0) / 100000) || 10),
+    encumbranceStatus: payload.encumbranceStatus || 'clean',
+    additionalDetails: payload.additionalDetails || ''
+  });
+  const municipal = getMockMunicipalResult(payload.registrationNumber || 'N/A');
+  const loan = getMockLoanOffers(
+    Number(payload.propertyValue || 0),
+    Number(payload.buyerIncome || payload.sellerIncome || 0),
+    payload.city || 'Unknown'
+  );
+
+  const verdict = fraud.riskLevel === 'high' ? 'HOLD' : fraud.riskLevel === 'medium' ? 'CAUTION' : 'PROCEED';
+  const actions = verdict === 'HOLD'
+    ? ['Pause payment and run full legal title audit.', 'Connect with verified property lawyer immediately.']
+    : verdict === 'CAUTION'
+      ? ['Request updated EC and municipal records before advance.', 'Proceed only after legal review.']
+      : ['No critical blocker detected in fallback model.', 'Continue standard legal due diligence.'];
+
+  return {
+    sessionId: payload.sessionId || `mock-${Date.now()}`,
+    previousVerdict,
+    plan: [
+      'Assess fraud risk from ownership and income signals.',
+      'Check municipal status from registration reference.',
+      'Estimate loan strength and affordability pressure.',
+      'Reflect and return final recommendation.'
+    ],
+    trace: [
+      { step: 'fraud-analysis', observation: `Fallback model produced ${fraud.riskLabel}.` },
+      { step: 'municipal-check', observation: `Fallback municipal status is ${municipal.reraStatus}.` },
+      { step: 'loan-analysis', observation: `Found ${loan.offers.length} sample bank offers.` },
+      { step: 'final-reflection', observation: `Fallback verdict is ${verdict}.` }
+    ],
+    outputs: {
+      fraud: {
+        riskLevel: String(fraud.riskLevel || 'low').toUpperCase(),
+        riskScore: Number(fraud.score || 0),
+        summary: fraud.summary,
+        recommendation: fraud.recommendation,
+        immediateAction: fraud.immediateAction
+      },
+      municipal,
+      loan
+    },
+    finalDecision: {
+      verdict,
+      actions,
+      rationale: `Fallback pipeline based on risk=${fraud.riskLabel}`
+    },
+    memory: {
+      lastVerdict: verdict,
+      lastRiskLevel: String(fraud.riskLevel || 'low').toUpperCase(),
+      updatedAt: new Date().toISOString(),
+      lastCity: payload.city || '',
+      lastPropertyValue: Number(payload.propertyValue || 0)
+    },
+    source: 'fallback'
   };
 }
 

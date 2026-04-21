@@ -40,6 +40,33 @@ PropSafe is a full-stack AI-powered platform that gives every Indian buyer **leg
 - Returns a **Fraud Risk Score (0–100)** — LOW / MEDIUM / HIGH
 - HIGH risk auto-connects buyer to a verified lawyer instantly
 
+### 🧠 Feature 1.1 — Agentic Property Evaluation (New)
+- New endpoint: `POST /api/agent/evaluate`
+- Runs a multi-step decision flow (plan → fraud check → municipal check → loan check → reflection)
+- Returns:
+   - reusable `sessionId` (short-term memory)
+   - execution `plan` and `trace`
+   - combined `finalDecision` (`PROCEED` / `CAUTION` / `HOLD`)
+   - per-tool outputs (`fraud`, `municipal`, `loan`)
+
+Example payload:
+
+```json
+{
+   "propertyType": "apartment",
+   "city": "Mumbai",
+   "sellerName": "A Kumar",
+   "previousOwners": 2,
+   "transfersLastTwoYears": 1,
+   "propertyValue": 9500000,
+   "sellerIncome": 1200000,
+   "buyerIncome": 1800000,
+   "encumbranceStatus": "clean",
+   "registrationNumber": "MH-RERA-1287",
+   "additionalDetails": "standard transfer no dispute"
+}
+```
+
 ### ⚖️ Feature 2 — Verified Lawyer Marketplace
 - Bar Council verified property lawyers across Indian cities
 - **₹500–₹1,000** vs ₹5,000+ traditional — **80% cheaper, 10x faster**

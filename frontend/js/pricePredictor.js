@@ -61,7 +61,6 @@ export async function runPricePredictor() {
     data = await predictPrice(formData);
     showToast('Price report generated successfully.', 'success');
   } catch (_) {
-    await sleep(1800);
     data = getMockPriceResult(formData);
     showToast('Prediction service unavailable. Showing fallback report.', 'warning');
   }
@@ -114,7 +113,6 @@ export async function runLoanMatcher() {
     });
     showToast('Loan eligibility matched successfully.', 'success');
   } catch (_) {
-    await sleep(900);
     data = getMockLoanOffers(propertyValueLakhs * 100000, buyerIncome, city);
     showToast('Loan API unavailable. Showing fallback offers.', 'warning');
   }
@@ -312,4 +310,3 @@ function buildChart(historical, predicted) {
   });
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

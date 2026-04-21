@@ -1,4 +1,4 @@
-import { verifyPropertyRegistration, getMockMunicipalResult } from './api.js';
+import { verifyPropertyRegistration, getMockMunicipalResult } from './api.js?v=20260421';
 import { showToast } from './toast.js';
 
 function escapeHtml(value) {
@@ -53,19 +53,35 @@ export async function runMunicipalVerification() {
 
   let data;
   let usedFallback = false;
+  let fallbackReason = '';
+  let fallbackHint = '';
   try {
     try {
       data = await verifyPropertyRegistration(registrationNumber);
       showToast('Property verification completed.', 'success');
     } catch (error) {
       const message = String(error?.message || '');
-      const networkDown = /failed to fetch|networkerror|load failed|fetch|unable to reach backend api|server error (4\d\d|5\d\d)/i.test(message);
+      const networkDown = /failed to fetch|networkerror|load failed|unable to reach backend api|unable to reach live municipal service|network request failed|cors/i.test(message);
+      const serviceError = /server error 5\d\d/i.test(message);
 
-      if (networkDown) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
+      if (networkDown || serviceError) {
         data = getMockMunicipalResult(registrationNumber);
         usedFallback = true;
-        showToast('Backend is offline. Showing fallback report.', 'warning');
+        fallbackReason = message || 'Unknown connectivity issue.';
+
+        if (window.location.protocol === 'https:') {
+          fallbackHint = 'This page is running on HTTPS. If backend is local HTTP, browser may block the request. Open the app from http://localhost:5173 for local development.';
+        } else {
+          fallbackHint = 'Ensure backend is running on port 3000 and frontend is opened from the same local machine.';
+        }
+
+        if (networkDown) {
+          showToast('Could not reach live municipal API. Showing fallback report.', 'warning');
+        } else {
+          showToast('Municipal service error. Showing fallback report.', 'warning');
+        }
+
+        console.warn('[Municipal Verify] live call failed:', message);
       } else {
         throw new Error(message || 'Municipal verification request failed.');
       }
@@ -74,7 +90,7 @@ export async function runMunicipalVerification() {
     resultArea.innerHTML = `
       <div class="verify-card animate-fade-in-up">
         <div class="verify-head">Verification Report — ${escapeHtml(data.registrationNumber || registrationNumber)}</div>
-        ${usedFallback ? '<div style="margin:10px 0 14px;padding:10px 12px;border:1px solid rgba(255,193,7,0.35);border-radius:10px;background:rgba(255,193,7,0.10);color:#8a6d1f;font-weight:600;">⚠️ Live municipal service unavailable. This is a fallback report.</div>' : ''}
+        ${usedFallback ? `<div style="margin:10px 0 14px;padding:10px 12px;border:1px solid rgba(255,193,7,0.35);border-radius:10px;background:rgba(255,193,7,0.10);color:#8a6d1f;font-weight:600;">⚠️ Showing fallback report due to temporary municipal service/connectivity issue.<div style="margin-top:6px;font-size:12px;font-weight:500;opacity:0.95;">Reason: ${escapeHtml(fallbackReason)}</div><div style="margin-top:4px;font-size:12px;font-weight:500;opacity:0.95;">Hint: ${escapeHtml(fallbackHint)}</div></div>` : ''}
         ${statusCell('RERA Status', data.reraStatus)}
         ${statusCell('Tax Records', data.taxRecordStatus)}
         ${statusCell('Building Permit', data.buildingPermitStatus)}

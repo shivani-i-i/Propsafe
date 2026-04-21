@@ -5,7 +5,8 @@
 import { initUploadZone, runFraudAnalysis }  from './fraudDetection.js';
 import { loadLawyers, initChat }              from './lawyerMarketplace.js';
 import { runPricePredictor, runLoanMatcher }  from './pricePredictor.js';
-import { runMunicipalVerification }            from './verifyProperty.js';
+import { runMunicipalVerification }            from './verifyProperty.js?v=20260421';
+import { runAgenticReview }                    from './agenticReview.js';
 import { fetchDashboardStats, getMockDashboardStats } from './api.js';
 
 /* ─── Tab Switching ─── */
@@ -91,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fraud analysis form
   document.getElementById('analyzeBtn')?.addEventListener('click', runFraudAnalysis);
+  document.getElementById('agentEvaluateBtn')?.addEventListener('click', runAgenticReview);
 
   // Lawyer filters
   document.getElementById('findLawyersBtn')?.addEventListener('click', () => {
