@@ -1,0 +1,388 @@
+CODE SECTION - PROPSAFE DAA PROJECT
+
+A) GPS Survey Service
+
+import { promises as fs } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const STORE_PATH = join(__dirname, '..', 'data', 'gps-surveys.json');
+
+export function calculateArea(coords) {
+  if (coords.length < 3) return 0;
+
+  let area = 0;
+  const n = coords.length;
+  const avgLat = coords.reduce((sum, p) => sum + p.lat, 0) / n;
+  const latToMeters = 111000;
+  const lngToMeters = 111000 * Math.cos((avgLat * Math.PI) / 180);
+
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const x1 = coords[i].lng * lngToMeters;
+    const y1 = coords[i].lat * latToMeters;
+    const x2 = coords[j].lng * lngToMeters;
+    const y2 = coords[j].lat * latToMeters;
+    area += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(area / 2);
+}
+
+export async function saveToFile(record) {
+  await fs.mkdir(join(__dirname, '..', 'data'), { recursive: true });
+
+  let records = [];
+  try {
+    const existing = await fs.readFile(STORE_PATH, 'utf-8');
+    const parsed = JSON.parse(existing);
+    records = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+
+  records.push(record);
+  await fs.writeFile(STORE_PATH, JSON.stringify(records, null, 2), 'utf-8');
+}
+
+export async function getAllSurveys() {
+  try {
+    const existing = await fs.readFile(STORE_PATH, 'utf-8');
+    const parsed = JSON.parse(existing);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+export async function getSurveyByCertificateId(certId) {
+  const surveys = await getAllSurveys();
+  return surveys.find(s => s.certificateId === certId) || null;
+}
+
+B) Fraud Risk Model
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function toNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function severityFromPoints(points) {
+  if (points >= 25) return 'HIGH';
+  if (points >= 12) return 'MEDIUM';
+  return 'LOW';
+}
+
+function riskLevelFromScore(score) {
+  if (score >= 75) return 'HIGH';
+  if (score >= 45) return 'MEDIUM';
+  return 'LOW';
+}
+
+function tokenizeText(text = '') {
+  return String(text).toLowerCase();
+}
+
+export function predictFraudRisk(input = {}) {
+  const previousOwners = clamp(toNumber(input.previousOwners, 1), 1, 20);
+  const transfersLastTwoYears = clamp(toNumber(input.transfersLastTwoYears, 0), 0, 20);
+  const propertyValue = Math.max(toNumber(input.propertyValue, 0), 0);
+  const sellerIncome = Math.max(toNumber(input.sellerIncome, 0), 0);
+  const encumbranceStatus = String(input.encumbranceStatus || 'clean').toLowerCase();
+  const propertyType = String(input.propertyType || '').toLowerCase();
+  const city = String(input.city || '').toLowerCase();
+  const details = tokenizeText(input.additionalDetails || '');
+
+  const cityRiskMap = {
+    mumbai: 6,
+    pune: 4,
+    delhi: 7,
+    bengaluru: 3,
+    hyderabad: 3,
+    chennai: 2
+  };
+
+  const propertyTypeRiskMap = {
+    land: 7,
+    plot: 6,
+    villa: 3,
+    apartment: 2,
+    commercial: 5
+  };
+
+  const ownerRiskPoints = clamp((previousOwners - 1) * 6, 0, 18);
+  const transferRiskPoints = clamp(transfersLastTwoYears * 10, 0, 24);
+
+  const incomeToValueRatio = propertyValue > 0 ? sellerIncome / propertyValue : 1;
+  let incomeMismatchPoints = 0;
+  if (incomeToValueRatio < 0.08) incomeMismatchPoints = 18;
+  else if (incomeToValueRatio < 0.15) incomeMismatchPoints = 10;
+
+  let encumbrancePoints = 0;
+  if (encumbranceStatus.includes('litigation') || encumbranceStatus.includes('dispute')) encumbrancePoints = 28;
+  else if (encumbranceStatus.includes('mortgage') || encumbranceStatus.includes('pending')) encumbrancePoints = 14;
+  else if (encumbranceStatus.includes('unknown')) encumbrancePoints = 10;
+
+  const cityRiskPoints = cityRiskMap[city] || 2;
+  const propertyTypePoints = propertyTypeRiskMap[propertyType] || 2;
+
+  const riskyPatterns = [
+    { pattern: /power of attorney|poa/, points: 10, issue: 'POA-based transaction' },
+    { pattern: /cash deal|cash only/, points: 10, issue: 'Cash-heavy transaction terms' },
+    { pattern: /urgent sale|immediate transfer/, points: 8, issue: 'Unusual urgency in sale' },
+    { pattern: /missing document|no document|documents? pending/, points: 14, issue: 'Incomplete document readiness' },
+    { pattern: /court|legal notice|dispute/, points: 15, issue: 'Legal dispute indicators' }
+  ];
+
+  let detailSignalPoints = 0;
+  const redFlags = [];
+
+  for (const signal of riskyPatterns) {
+    if (signal.pattern.test(details)) {
+      detailSignalPoints += signal.points;
+      redFlags.push({
+        severity: severityFromPoints(signal.points),
+        issue: signal.issue
+      });
+    }
+  }
+
+  detailSignalPoints = clamp(detailSignalPoints, 0, 18);
+
+  const rawScore =
+    10 +
+    ownerRiskPoints +
+    transferRiskPoints +
+    incomeMismatchPoints +
+    encumbrancePoints +
+    cityRiskPoints +
+    propertyTypePoints +
+    detailSignalPoints;
+
+  let scaledScore = rawScore * 0.7 + 8;
+  if (scaledScore > 88) scaledScore = 88 + (scaledScore - 88) * 0.2;
+
+  const riskScore = clamp(Math.round(scaledScore), 0, 100);
+  const riskLevel = riskLevelFromScore(riskScore);
+
+  return { riskScore, riskLevel, redFlags };
+}
+
+C) Price Prediction Controller
+
+import { successResponse, errorResponse } from '../utils/responses.js';
+
+export function predictPrice(req, res) {
+  try {
+    const { locality, currentPrice, propertyType, askingPrice } = req.body;
+
+    if (!locality || currentPrice === undefined || !propertyType || askingPrice === undefined) {
+      return errorResponse(res, 'locality, currentPrice, propertyType and askingPrice are required', 400);
+    }
+
+    const current = Number(currentPrice);
+    const asking = Number(askingPrice);
+
+    if (Number.isNaN(current) || Number.isNaN(asking) || current <= 0 || asking <= 0) {
+      return errorResponse(res, 'currentPrice and askingPrice must be valid positive numbers', 400);
+    }
+
+    const historicalData = [];
+    for (let year = 2024; year >= 2015; year -= 1) {
+      let price;
+
+      if (year === 2024) {
+        price = current;
+      } else {
+        const yearsBack = 2024 - year;
+        price = current / Math.pow(1.07, yearsBack);
+
+        if (year === 2020) {
+          price *= 0.95;
+        }
+      }
+
+      historicalData.push({ year, price: Math.round(price) });
+    }
+
+    historicalData.sort((a, b) => a.year - b.year);
+
+    const prediction2025 = Math.round(current * 1.08);
+    const prediction2026 = Math.round(current * 1.17);
+
+    const appreciationPercent = Number((((prediction2026 - current) / current) * 100).toFixed(2));
+    const overpricedBy = Number((asking - current).toFixed(2));
+
+    return successResponse(res, {
+      historicalData,
+      predictions: [
+        { year: 2025, price: prediction2025 },
+        { year: 2026, price: prediction2026 }
+      ],
+      appreciationPercent,
+      overpricedBy
+    });
+  } catch (error) {
+    return errorResponse(res, 'Failed to predict price', 500, error.message);
+  }
+}
+
+D) Loan Matching Controller
+
+import { successResponse, errorResponse } from '../utils/responses.js';
+
+function calculateEmi(principal, annualRate, months) {
+  const monthlyRate = annualRate / 12 / 100;
+  const factor = Math.pow(1 + monthlyRate, months);
+  return (principal * monthlyRate * factor) / (factor - 1);
+}
+
+export async function matchLoanOffers(req, res) {
+  try {
+    const { propertyValue, buyerIncome, city } = req.body;
+
+    if (propertyValue === undefined || buyerIncome === undefined || !city) {
+      return errorResponse(res, 'propertyValue, buyerIncome and city are required', 400);
+    }
+
+    const value = Number(propertyValue);
+    const income = Number(buyerIncome);
+
+    if (Number.isNaN(value) || Number.isNaN(income) || value <= 0 || income <= 0) {
+      return errorResponse(res, 'propertyValue and buyerIncome must be valid positive numbers', 400);
+    }
+
+    const cityMultiplier = ['mumbai', 'delhi', 'bangalore'].includes(String(city).toLowerCase()) ? 1 : 0.95;
+    const affordabilityCap = income * 60 * cityMultiplier;
+
+    const banks = [
+      { bankName: 'State Bank of India', interestRate: 8.45, ltv: 0.8 },
+      { bankName: 'HDFC Bank', interestRate: 8.7, ltv: 0.82 },
+      { bankName: 'ICICI Bank', interestRate: 8.8, ltv: 0.8 },
+      { bankName: 'Axis Bank', interestRate: 8.95, ltv: 0.78 },
+      { bankName: 'Bank of Baroda', interestRate: 8.6, ltv: 0.79 }
+    ];
+
+    const tenureMonths = 240;
+
+    const offers = banks.map((bank) => {
+      const ltvAmount = value * bank.ltv;
+      const maxLoanAmount = Math.round(Math.min(ltvAmount, affordabilityCap));
+      const emiEstimate = Math.round(calculateEmi(maxLoanAmount, bank.interestRate, tenureMonths));
+      const loanEligibility = maxLoanAmount >= value * 0.6 ? 'ELIGIBLE' : 'PARTIALLY_ELIGIBLE';
+
+      return {
+        bankName: bank.bankName,
+        loanEligibility,
+        interestRate: bank.interestRate,
+        emiEstimate,
+        maxLoanAmount
+      };
+    });
+
+    return successResponse(res, {
+      city,
+      propertyValue: value,
+      buyerIncome: income,
+      offers
+    });
+  } catch (error) {
+    return errorResponse(res, 'Loan matching failed', 500, error.message);
+  }
+}
+
+E) OCR Controller
+
+import Tesseract from 'tesseract.js';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import { successResponse, errorResponse } from '../utils/responses.js';
+
+function extractFirstMatch(text, patterns) {
+  for (const regex of patterns) {
+    const match = text.match(regex);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
+function parseFields(rawText) {
+  const normalized = rawText.replace(/\r/g, '');
+
+  const buyerName = extractFirstMatch(normalized, [
+    /buyer\s*name\s*[:\-]\s*([^\n]+)/i,
+    /purchaser\s*[:\-]\s*([^\n]+)/i
+  ]);
+
+  const sellerName = extractFirstMatch(normalized, [
+    /seller\s*name\s*[:\-]\s*([^\n]+)/i,
+    /vendor\s*[:\-]\s*([^\n]+)/i
+  ]);
+
+  const transactionDate = extractFirstMatch(normalized, [
+    /transaction\s*date\s*[:\-]\s*([^\n]+)/i,
+    /date\s*of\s*sale\s*[:\-]\s*([^\n]+)/i,
+    /date\s*[:\-]\s*([0-3]?\d[\/\-.][0-1]?\d[\/\-.]\d{2,4})/i
+  ]);
+
+  const propertyValue = extractFirstMatch(normalized, [
+    /property\s*value\s*[:\-]?\s*(₹?[\d,]+(?:\.\d+)?)/i,
+    /sale\s*consideration\s*[:\-]?\s*(₹?[\d,]+(?:\.\d+)?)/i,
+    /value\s*[:\-]?\s*(₹?[\d,]+(?:\.\d+)?)/i
+  ]);
+
+  return {
+    buyerName,
+    sellerName,
+    transactionDate,
+    propertyValue
+  };
+}
+
+export async function extractDocumentText(req, res) {
+  try {
+    if (!req.file) {
+      return errorResponse(res, 'Document file is required', 400);
+    }
+
+    const { mimetype, buffer, originalname } = req.file;
+    if (!mimetype.startsWith('image/') && mimetype !== 'application/pdf') {
+      return errorResponse(res, 'Only image or PDF files are supported', 400);
+    }
+
+    let extractedText = '';
+
+    if (mimetype === 'application/pdf') {
+      const parsedPdf = await pdfParse(buffer);
+      extractedText = (parsedPdf?.text || '').trim();
+
+      if (!extractedText) {
+        return errorResponse(
+          res,
+          'No extractable text found in PDF. Please upload a clear image or a searchable PDF.',
+          422
+        );
+      }
+    } else {
+      const { data } = await Tesseract.recognize(buffer, 'eng');
+      extractedText = (data?.text || '').trim();
+    }
+
+    const fields = parseFields(extractedText);
+
+    return successResponse(res, {
+      fileName: originalname,
+      extractedText,
+      extractedFields: fields
+    });
+  } catch (error) {
+    return errorResponse(res, 'Failed to process OCR extraction', 500, error.message);
+  }
+}

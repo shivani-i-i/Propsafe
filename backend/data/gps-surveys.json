@@ -377,5 +377,32 @@
     "discrepancyPercent": 500.26,
     "verified": false,
     "submittedAt": "2026-03-27T06:53:12.023Z"
+  },
+  {
+    "certificateId": "GPS-2026-UTTXWB",
+    "propertyId": "P-001",
+    "coordinates": [
+      {
+        "lat": 19.076,
+        "lng": 72.8777
+      },
+      {
+        "lat": 19.076,
+        "lng": 72.8787
+      },
+      {
+        "lat": 19.077,
+        "lng": 72.8787
+      },
+      {
+        "lat": 19.077,
+        "lng": 72.8777
+      }
+    ],
+    "calculatedArea": 11644.37,
+    "registeredArea": 1000,
+    "discrepancyPercent": 1064.44,
+    "verified": false,
+    "submittedAt": "2026-04-09T05:59:41.093Z"
   }
 ]
