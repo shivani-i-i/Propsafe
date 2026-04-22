@@ -8,6 +8,7 @@ import { runPricePredictor, runLoanMatcher }  from './pricePredictor.js';
 import { runMunicipalVerification }            from './verifyProperty.js?v=20260421';
 import { runAgenticReview }                    from './agenticReview.js';
 import { fetchDashboardStats, getMockDashboardStats } from './api.js';
+import { initPaymentModal, gateFeatureAccess } from './payment.js';
 
 /* ─── Tab Switching ─── */
 const TABS = ['home', 'fraud', 'lawyers', 'price', 'verify', 'gps'];
@@ -68,6 +69,9 @@ window.switchTab = function(tabId) {
 
 /* ─── Init ─── */
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize payment modal
+  initPaymentModal();
+
   // Navbar tab buttons
   document.querySelectorAll('.nav-tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -90,24 +94,68 @@ document.addEventListener('DOMContentLoaded', () => {
   // Upload zone
   initUploadZone();
 
-  // Fraud analysis form
-  document.getElementById('analyzeBtn')?.addEventListener('click', runFraudAnalysis);
-  document.getElementById('agentEvaluateBtn')?.addEventListener('click', runAgenticReview);
+  // Fraud analysis form (gated)
+  document.getElementById('analyzeBtn')?.addEventListener('click', (e) => {
+    if (!gateFeatureAccess('fraud')) {
+      e.preventDefault();
+      sessionStorage.setItem('propsafe_pending_action', 'fraud');
+      return;
+    }
+    runFraudAnalysis();
+  });
 
-  // Lawyer filters
+  // Agentic Review (gated)
+  document.getElementById('agentEvaluateBtn')?.addEventListener('click', (e) => {
+    if (!gateFeatureAccess('agent')) {
+      e.preventDefault();
+      sessionStorage.setItem('propsafe_pending_action', 'agent');
+      return;
+    }
+    runAgenticReview();
+  });
+
+  // Lawyer filters (not gated - free feature)
   document.getElementById('findLawyersBtn')?.addEventListener('click', () => {
     loadLawyers();
   });
 
-  // Price predictor
-  document.getElementById('predictBtn')?.addEventListener('click', runPricePredictor);
-  document.getElementById('loanMatchBtn')?.addEventListener('click', runLoanMatcher);
+  // Price predictor (gated)
+  document.getElementById('predictBtn')?.addEventListener('click', (e) => {
+    if (!gateFeatureAccess('price')) {
+      e.preventDefault();
+      sessionStorage.setItem('propsafe_pending_action', 'price');
+      return;
+    }
+    runPricePredictor();
+  });
 
-  // Municipal verification
-  document.getElementById('verifyPropertyBtn')?.addEventListener('click', runMunicipalVerification);
+  // Loan matcher (gated)
+  document.getElementById('loanMatchBtn')?.addEventListener('click', (e) => {
+    if (!gateFeatureAccess('price')) {
+      e.preventDefault();
+      sessionStorage.setItem('propsafe_pending_action', 'loan');
+      return;
+    }
+    runLoanMatcher();
+  });
+
+  // Municipal verification (gated)
+  document.getElementById('verifyPropertyBtn')?.addEventListener('click', (e) => {
+    if (!gateFeatureAccess('verify')) {
+      e.preventDefault();
+      sessionStorage.setItem('propsafe_pending_action', 'verify');
+      return;
+    }
+    runMunicipalVerification();
+  });
+
   document.getElementById('registrationNumber')?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
+      if (!gateFeatureAccess('verify')) {
+        sessionStorage.setItem('propsafe_pending_action', 'verify');
+        return;
+      }
       runMunicipalVerification();
     }
   });

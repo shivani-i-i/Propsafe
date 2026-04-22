@@ -489,6 +489,112 @@
     </div>
   </section><!-- /content-gps -->
 
+  <!-- ═══════════════════════════════════════
+       PAYMENT MODAL
+  ════════════════════════════════════════ -->
+  <div id="paymentModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>🔒 Unlock Premium Features</h2>
+        <button class="modal-close" id="closePaymentModal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="text-align:center;margin-bottom:24px;">
+          <p style="color:var(--text-muted);font-size:14px;margin:0;">Choose a plan to access premium features</p>
+        </div>
+
+        <!-- Payment Error -->
+        <div id="paymentError" class="alert alert-error" style="display:none;margin-bottom:16px;"></div>
+
+        <!-- Pricing Plans -->
+        <div class="pricing-grid">
+          <!-- Plan 1: Single Report -->
+          <div class="payment-plan" id="plan-fraudReport" data-plan="fraudReport">
+            <div class="plan-header">
+              <div class="plan-name">📋 Single Report</div>
+              <div class="plan-price">₹99</div>
+            </div>
+            <div class="plan-duration">24-hour access</div>
+            <div class="plan-features">
+              <div class="plan-feature">✓ Fraud Detection & Scoring</div>
+              <div class="plan-feature">✓ Transaction ID</div>
+            </div>
+            <button class="plan-select-btn">Select Plan</button>
+          </div>
+
+          <!-- Plan 2: Full Access -->
+          <div class="payment-plan selected" id="plan-fullAccess" data-plan="fullAccess">
+            <div class="plan-badge">RECOMMENDED</div>
+            <div class="plan-header">
+              <div class="plan-name">⭐ Full Premium Access</div>
+              <div class="plan-price">₹299</div>
+            </div>
+            <div class="plan-duration">30-day access</div>
+            <div class="plan-features">
+              <div class="plan-feature">✓ Fraud Detection & Scoring</div>
+              <div class="plan-feature">✓ Price Predictor</div>
+              <div class="plan-feature">✓ Agentic AI Review</div>
+              <div class="plan-feature">✓ Municipal Verification</div>
+            </div>
+            <button class="plan-select-btn">Select Plan</button>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;padding:12px;background:var(--bg-card-2);border-radius:8px;border-left:4px solid var(--teal);">
+          <div style="font-size:13px;color:var(--text-secondary);display:flex;gap:8px;align-items:flex-start;">
+            <span style="margin-top:2px;">ℹ️</span>
+            <div>
+              <strong>Demo Mode:</strong> Test payment disabled. Click "Pay Now" to see success flow. Real Razorpay integration requires API key.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="document.getElementById('paymentModal').classList.remove('active'); document.body.style.overflow='auto';">Cancel</button>
+        <button class="btn btn-primary" id="payNowBtn">Pay Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PAYMENT SUCCESS MODAL
+  ════════════════════════════════════════ -->
+  <div id="paymentSuccessModal" class="modal-overlay">
+    <div class="modal-card" style="text-align:center;">
+      <div class="modal-body" style="padding:40px 32px;">
+        <div style="font-size:48px;margin-bottom:16px;animation:drift 2s ease-in-out infinite;">
+          ✅
+        </div>
+
+        <h2 style="margin:0 0 8px;font-size:24px;">Payment Successful!</h2>
+        <p style="color:var(--text-muted);margin:0 0 24px;font-size:14px;">Your premium access is now active</p>
+
+        <div style="background:var(--bg-card-2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px;text-align:left;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+            <span style="color:var(--text-muted);font-size:13px;">Plan</span>
+            <span style="font-weight:600;" id="successFeatureName">--</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+            <span style="color:var(--text-muted);font-size:13px;">Amount Paid</span>
+            <span style="font-weight:600;font-size:16px;color:var(--teal);" id="successPlanAmount">--</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:var(--text-muted);font-size:13px;">Transaction ID</span>
+            <span style="font-family:monospace;font-size:12px;font-weight:500;" id="successTransactionId">--</span>
+          </div>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:12px;margin:0 0 20px;">Your access will remain active for this session</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" style="flex:1;" id="continueAfterPaymentBtn">🚀 Continue to Features</button>
+      </div>
+    </div>
+  </div>
+
 </main><!-- /main-container -->
 
 
