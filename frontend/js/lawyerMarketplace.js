@@ -5,20 +5,53 @@ import { fetchLawyers, sendChatMessage, createLawyerBooking, getMockBooking } fr
 import { showToast } from './toast.js';
 
 const LAWYER_CACHE_KEY = 'propsafe_live_lawyers_v1';
+const LAWYER_DIRECTORY_VERIFIED_ON = '2026-04-22';
+
+function formatDateTime(value) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return date.toLocaleString('en-IN');
+}
+
+function updateLawyerTrustRow({ lastSynced = null, source = 'Unknown' } = {}) {
+  const verifiedNode = document.getElementById('lawyerVerifiedOn');
+  const syncedNode = document.getElementById('lawyerLastSynced');
+  const sourceNode = document.getElementById('lawyerDataMode');
+
+  if (verifiedNode) verifiedNode.textContent = `✅ Verified On: ${LAWYER_DIRECTORY_VERIFIED_ON}`;
+  if (syncedNode) syncedNode.textContent = `🔄 Last Synced: ${formatDateTime(lastSynced)}`;
+  if (sourceNode) sourceNode.textContent = `📡 Source: ${source}`;
+}
 
 function readLawyerCache() {
   try {
     const raw = localStorage.getItem(LAWYER_CACHE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = raw ? JSON.parse(raw) : null;
+
+    if (Array.isArray(parsed)) {
+      return { items: parsed, updatedAt: null };
+    }
+
+    if (parsed && Array.isArray(parsed.items)) {
+      return { items: parsed.items, updatedAt: parsed.updatedAt || null };
+    }
+
+    return { items: [], updatedAt: null };
   } catch (_) {
-    return [];
+    return { items: [], updatedAt: null };
   }
 }
 
 function writeLawyerCache(lawyers = []) {
   try {
-    localStorage.setItem(LAWYER_CACHE_KEY, JSON.stringify(Array.isArray(lawyers) ? lawyers : []));
+    localStorage.setItem(
+      LAWYER_CACHE_KEY,
+      JSON.stringify({
+        items: Array.isArray(lawyers) ? lawyers : [],
+        updatedAt: new Date().toISOString()
+      })
+    );
   } catch (_) {
     // Ignore storage failures.
   }
@@ -57,13 +90,16 @@ export async function loadLawyers() {
   try {
     lawyers = await fetchLawyers(city, spec);
     writeLawyerCache(lawyers);
+    updateLawyerTrustRow({ lastSynced: new Date().toISOString(), source: 'Live API' });
     showToast('Lawyers loaded successfully.', 'success');
   } catch (_) {
-    const cachedLawyers = readLawyerCache();
-    lawyers = cachedLawyers;
-    if (cachedLawyers.length) {
+    const cached = readLawyerCache();
+    lawyers = cached.items;
+    if (cached.items.length) {
+      updateLawyerTrustRow({ lastSynced: cached.updatedAt, source: 'Cached Snapshot' });
       showToast('Live directory unavailable. Showing last synced lawyer list.', 'warning');
     } else {
+      updateLawyerTrustRow({ lastSynced: null, source: 'Unavailable' });
       showToast('Live lawyer directory is currently unavailable.', 'error');
     }
   }
