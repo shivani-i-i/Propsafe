@@ -374,81 +374,196 @@ function showBookingModal(name, price, lawyerId) {
       return;
     }
 
-    const bookingPayload = {
-      lawyerId,
-      userDetails: {
-        name: 'PropSafe User',
-        phone: '9999999999',
-        email: ''
-      },
-      paymentDetails: {
-        method: paymentMethod,
-        amount: paymentAmount,
-        currency: 'INR',
-        status: paymentMethod === 'PAY_LATER' ? 'PENDING' : 'INITIATED',
-        transactionRef: `TXN-${Date.now()}`
-      }
-    };
+    // For "Pay Later" option, skip Razorpay and create booking directly
+    if (paymentMethod === 'PAY_LATER') {
+      const bookingPayload = {
+        lawyerId,
+        userDetails: {
+          name: 'PropSafe User',
+          phone: '9999999999',
+          email: ''
+        },
+        paymentDetails: {
+          method: paymentMethod,
+          amount: paymentAmount,
+          currency: 'INR',
+          status: 'PENDING',
+          transactionRef: `TXN-${Date.now()}`
+        }
+      };
 
-    let bookingResponse;
-    try {
-      bookingResponse = await createLawyerBooking(bookingPayload);
-      showToast('Booking created successfully.', 'success');
-    } catch (_) {
-      bookingResponse = getMockBooking(bookingPayload);
-      showToast('Booking service unavailable. Created local confirmation.', 'warning');
+      let bookingResponse;
+      try {
+        bookingResponse = await createLawyerBooking(bookingPayload);
+        showToast('Booking created. Payment due at consultation.', 'success');
+      } catch (_) {
+        bookingResponse = getMockBooking(bookingPayload);
+        showToast('Booking created locally. Payment due at consultation.', 'info');
+      }
+
+      showBookingSuccess(modal, name, price, lawyerId, bookingResponse, bookingPayload);
+      return;
     }
 
-    const booking = bookingResponse.booking || {};
-    const bookingId = booking._id || `BK-${Date.now()}`;
-    const bookingTime = new Date(booking.bookingTime || Date.now()).toLocaleString('en-IN');
-    const payment = booking.paymentDetails || bookingPayload.paymentDetails || {};
-    const paymentAmountText = Number(payment.amount || paymentAmount).toLocaleString('en-IN');
-    const paymentMethodText = String(payment.method || paymentMethod).replace(/_/g, ' ');
-    const paymentStatus = String(payment.status || 'INITIATED');
-    const paymentRef = payment.transactionRef || bookingPayload.paymentDetails.transactionRef;
-
-    modal.innerHTML = `
-      <div class="modal animate-scale-in booking-success-screen">
-        <div class="modal-icon">🎉</div>
-        <div class="modal-title">Booking Confirmed!</div>
-        <div class="modal-sub">
-          <strong>ID:</strong> ${bookingId}<br>
-          <strong>Lawyer:</strong> ${name}<br>
-          <strong>Date & Time:</strong> ${bookingTime}<br>
-          <strong>Payment:</strong> ${paymentMethodText} · INR ${paymentAmountText}<br>
-          <strong>Status:</strong> ${paymentStatus}${paymentRef ? `<br><strong>Txn Ref:</strong> ${paymentRef}` : ''}
-        </div>
-        <div class="modal-actions" style="margin-top:8px;">
-          <button class="btn btn-primary" style="flex:1;" id="downloadReceipt">Download Confirmation</button>
-          <button class="btn btn-outline" style="flex:1;" id="closeBk">Done</button>
-        </div>
-      </div>`;
-
-    modal.querySelector('#downloadReceipt').addEventListener('click', () => {
-      const jsPDFLib = window.jspdf?.jsPDF;
-      if (!jsPDFLib) {
-        showToast('PDF library is not available.', 'error');
-        return;
-      }
-      const doc = new jsPDFLib();
-      doc.setFontSize(16);
-      doc.text('PropSafe Booking Confirmation', 20, 20);
-      doc.setFontSize(12);
-      doc.text(`Booking ID: ${bookingId}`, 20, 40);
-      doc.text(`Lawyer Name: ${name}`, 20, 50);
-      doc.text(`Consultation Fee: INR ${paymentAmountText}`, 20, 60);
-      doc.text(`Payment Method: ${paymentMethodText}`, 20, 70);
-      doc.text(`Payment Status: ${paymentStatus}`, 20, 80);
-      if (paymentRef) doc.text(`Transaction Ref: ${paymentRef}`, 20, 90);
-      doc.text(`Booked At: ${bookingTime}`, 20, paymentRef ? 100 : 90);
-      doc.save(`propsafe-booking-${bookingId}.pdf`);
-      showToast('Confirmation downloaded successfully.', 'success');
-    });
-
-    modal.querySelector('#closeBk').addEventListener('click', () => modal.remove());
+    // For all other methods, trigger Razorpay payment
+    triggerRazorpayPayment(modal, name, price, lawyerId, paymentMethod, paymentAmount);
   });
+}
+
+/**
+ * Trigger Razorpay payment for lawyer booking
+ */
+async function triggerRazorpayPayment(modal, lawyerName, lawyerPrice, lawyerId, paymentMethod, paymentAmount) {
+  const razorpayKeyId = 'YOUR_RAZORPAY_KEY_ID';  // Update with actual key for production
+
+  // Load Razorpay SDK if not already loaded
+  if (!window.Razorpay) {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => {
+      initiateRazorpayCheckout(modal, lawyerName, lawyerPrice, lawyerId, paymentMethod, paymentAmount, razorpayKeyId);
+    };
+    script.onerror = () => {
+      showToast('Failed to load payment gateway. Please try again.', 'error');
+    };
+    document.head.appendChild(script);
+  } else {
+    initiateRazorpayCheckout(modal, lawyerName, lawyerPrice, lawyerId, paymentMethod, paymentAmount, razorpayKeyId);
+  }
+}
+
+/**
+ * Initialize Razorpay checkout for lawyer booking
+ */
+function initiateRazorpayCheckout(modal, lawyerName, lawyerPrice, lawyerId, paymentMethod, paymentAmount, keyId) {
+  const options = {
+    key: keyId,
+    amount: paymentAmount * 100,  // Razorpay expects amount in paise
+    currency: 'INR',
+    name: 'PropSafe',
+    description: `Lawyer Booking - ${lawyerName}`,
+    prefill: {
+      name: 'PropSafe User',
+      email: 'user@propsafe.demo',
+      contact: '9999999999'
+    },
+    theme: {
+      color: '#23a6f0'
+    },
+    handler: function (response) {
+      handleRazorpaySuccess(
+        modal,
+        lawyerName,
+        lawyerPrice,
+        lawyerId,
+        paymentMethod,
+        paymentAmount,
+        response.razorpay_payment_id
+      );
+    },
+    modal: {
+      ondismiss: function () {
+        showToast('Payment cancelled. Your booking was not created.', 'warning');
+        modal.remove();
+      }
+    }
+  };
+
+  try {
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  } catch (error) {
+    showToast('Payment failed to load. Please try again.', 'error');
+    console.error('Razorpay error:', error);
+  }
+}
+
+/**
+ * Handle successful Razorpay payment
+ */
+async function handleRazorpaySuccess(modal, lawyerName, lawyerPrice, lawyerId, paymentMethod, paymentAmount, transactionId) {
+  const bookingPayload = {
+    lawyerId,
+    userDetails: {
+      name: 'PropSafe User',
+      phone: '9999999999',
+      email: ''
+    },
+    paymentDetails: {
+      method: paymentMethod,
+      amount: paymentAmount,
+      currency: 'INR',
+      status: 'COMPLETED',
+      transactionRef: transactionId
+    }
+  };
+
+  let bookingResponse;
+  try {
+    bookingResponse = await createLawyerBooking(bookingPayload);
+    showToast('Payment successful! Booking confirmed.', 'success');
+  } catch (_) {
+    bookingResponse = getMockBooking(bookingPayload);
+    showToast('Payment successful. Booking created locally.', 'info');
+  }
+
+  showBookingSuccess(modal, lawyerName, lawyerPrice, lawyerId, bookingResponse, bookingPayload);
+}
+
+/**
+ * Display booking success modal
+ */
+function showBookingSuccess(modal, name, price, lawyerId, bookingResponse, bookingPayload) {
+  const booking = bookingResponse.booking || {};
+  const bookingId = booking._id || `BK-${Date.now()}`;
+  const bookingTime = new Date(booking.bookingTime || Date.now()).toLocaleString('en-IN');
+  const payment = booking.paymentDetails || bookingPayload.paymentDetails || {};
+  const paymentAmountText = Number(payment.amount || price).toLocaleString('en-IN');
+  const paymentMethodText = String(payment.method || 'RAZORPAY').replace(/_/g, ' ');
+  const paymentStatus = String(payment.status || 'INITIATED');
+  const paymentRef = payment.transactionRef || bookingPayload.paymentDetails.transactionRef;
+
+  modal.innerHTML = `
+    <div class="modal animate-scale-in booking-success-screen">
+      <div class="modal-icon">🎉</div>
+      <div class="modal-title">Booking Confirmed!</div>
+      <div class="modal-sub">
+        <strong>ID:</strong> ${bookingId}<br>
+        <strong>Lawyer:</strong> ${name}<br>
+        <strong>Date & Time:</strong> ${bookingTime}<br>
+        <strong>Payment:</strong> ${paymentMethodText} · INR ${paymentAmountText}<br>
+        <strong>Status:</strong> ${paymentStatus}${paymentRef ? `<br><strong>Txn Ref:</strong> ${paymentRef}` : ''}
+      </div>
+      <div class="modal-actions" style="margin-top:8px;">
+        <button class="btn btn-primary" style="flex:1;" id="downloadReceipt">Download Confirmation</button>
+        <button class="btn btn-outline" style="flex:1;" id="closeBk">Done</button>
+      </div>
+    </div>`;
+
+  modal.querySelector('#downloadReceipt').addEventListener('click', () => {
+    const jsPDFLib = window.jspdf?.jsPDF;
+    if (!jsPDFLib) {
+      showToast('PDF library is not available.', 'error');
+      return;
+    }
+    const doc = new jsPDFLib();
+    doc.setFontSize(16);
+    doc.text('PropSafe Booking Confirmation', 20, 20);
+    doc.setFontSize(12);
+    doc.text(`Booking ID: ${bookingId}`, 20, 40);
+    doc.text(`Lawyer Name: ${name}`, 20, 50);
+    doc.text(`Consultation Fee: INR ${paymentAmountText}`, 20, 60);
+    doc.text(`Payment Method: ${paymentMethodText}`, 20, 70);
+    doc.text(`Payment Status: ${paymentStatus}`, 20, 80);
+    if (paymentRef) doc.text(`Transaction Ref: ${paymentRef}`, 20, 90);
+    doc.text(`Booked At: ${bookingTime}`, 20, paymentRef ? 100 : 90);
+    doc.save(`propsafe-booking-${bookingId}.pdf`);
+    showToast('Confirmation downloaded successfully.', 'success');
+  });
+
+  modal.querySelector('#closeBk').addEventListener('click', () => modal.remove());
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
 }
 
 /* ─── AI Chat ─── */
