@@ -130,6 +130,14 @@ function formatDateTime(value) {
   return date.toLocaleString('en-IN');
 }
 
+function normalizeSourceLabel(source = '') {
+  const raw = String(source || '').toLowerCase();
+  if (raw.includes('live')) return 'Curated Directory Data (Live)';
+  if (raw.includes('cached')) return 'Curated Directory Data (Cached)';
+  if (raw.includes('snapshot')) return 'Curated Directory Data (Snapshot)';
+  return 'Curated Directory Data';
+}
+
 function updateLawyerTrustRow({ lastSynced = null, source = 'Unknown' } = {}) {
   const verifiedNode = document.getElementById('lawyerVerifiedOn');
   const syncedNode = document.getElementById('lawyerLastSynced');
@@ -137,7 +145,7 @@ function updateLawyerTrustRow({ lastSynced = null, source = 'Unknown' } = {}) {
 
   if (verifiedNode) verifiedNode.textContent = `✅ Verified On: ${LAWYER_DIRECTORY_VERIFIED_ON}`;
   if (syncedNode) syncedNode.textContent = `🔄 Last Synced: ${formatDateTime(lastSynced)}`;
-  if (sourceNode) sourceNode.textContent = `📡 Source: ${source}`;
+  if (sourceNode) sourceNode.textContent = `📡 Source: ${normalizeSourceLabel(source)}`;
 }
 
 function readLawyerCache() {
@@ -227,12 +235,12 @@ export async function loadLawyers() {
     lawyers = cached.items;
     if (cached.items.length) {
       updateLawyerTrustRow({ lastSynced: cached.updatedAt, source: 'Cached Snapshot' });
-      showToast('Showing last synced verified lawyer list.', 'warning');
+      showToast('Showing last synced curated directory records.', 'warning');
     } else {
       const emergency = applyClientFilters(EMERGENCY_LAWYER_SNAPSHOT, city, spec);
       lawyers = emergency.length ? emergency : EMERGENCY_LAWYER_SNAPSHOT;
       updateLawyerTrustRow({ lastSynced: null, source: 'Verified Snapshot' });
-      showToast('Showing verified lawyer snapshot for demo continuity.', 'warning');
+      showToast('Showing curated directory snapshot for demo continuity.', 'warning');
     }
   }
 
@@ -262,7 +270,7 @@ function renderLawyerCard(l) {
   const stars = '★'.repeat(Math.round(l.rating)) + '☆'.repeat(5 - Math.round(l.rating));
   const tags  = l.tags.map(t => `<span class="tag">${t}</span>`).join('');
   const barCouncil = l.barCouncilId ? `<span class="pill pill-neutral">🆔 ${l.barCouncilId}</span>` : '';
-  const sourceLabel = l.source ? `<span class="pill pill-neutral">📚 ${String(l.source).replace(/[-_]/g, ' ')}</span>` : '';
+  const sourceLabel = `<span class="pill pill-neutral">📚 ${normalizeSourceLabel(l.source)}</span>`;
   const profileLink = l.profileUrl
     ? `<a class="btn btn-outline btn-sm" href="${l.profileUrl}" target="_blank" rel="noopener noreferrer" style="margin-top:10px;">View Profile</a>`
     : '';
