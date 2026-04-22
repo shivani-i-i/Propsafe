@@ -98,6 +98,11 @@ export async function loadLawyers() {
 function renderLawyerCard(l) {
   const stars = '★'.repeat(Math.round(l.rating)) + '☆'.repeat(5 - Math.round(l.rating));
   const tags  = l.tags.map(t => `<span class="tag">${t}</span>`).join('');
+  const barCouncil = l.barCouncilId ? `<span class="pill pill-neutral">🆔 ${l.barCouncilId}</span>` : '';
+  const sourceLabel = l.source ? `<span class="pill pill-neutral">📚 ${String(l.source).replace(/[-_]/g, ' ')}</span>` : '';
+  const profileLink = l.profileUrl
+    ? `<a class="btn btn-outline btn-sm" href="${l.profileUrl}" target="_blank" rel="noopener noreferrer" style="margin-top:10px;">View Profile</a>`
+    : '';
 
   return `
     <div class="lawyer-card">
@@ -121,6 +126,8 @@ function renderLawyerCard(l) {
         <span class="pill pill-neutral">📍 ${l.city}</span>
         <span class="pill pill-neutral">⏱ ${l.experience} yrs exp</span>
         ${l.verified ? `<span class="verified-badge">✔ Bar Council Verified</span>` : ''}
+        ${barCouncil}
+        ${sourceLabel}
       </div>
 
       <div class="lawyer-price-row">
@@ -133,6 +140,7 @@ function renderLawyerCard(l) {
           Book Now
         </button>
       </div>
+      ${profileLink}
     </div>`;
 }
 

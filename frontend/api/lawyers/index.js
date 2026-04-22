@@ -18,7 +18,9 @@ function normalize(lawyer = {}) {
     fee: Number(lawyer.fee || 0),
     phone: lawyer.phone || '',
     barCouncilId: lawyer.barCouncilId || '',
-    verified: Boolean(lawyer.verified)
+    verified: Boolean(lawyer.verified),
+    source: lawyer.source || 'directory',
+    profileUrl: lawyer.profileUrl || ''
   };
 }
 

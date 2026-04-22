@@ -50,6 +50,7 @@ function normalizeLawyerRecord(lawyer = {}) {
     phone: lawyer.phone || '',
     barCouncilId: lawyer.barCouncilId || '',
     verified: Boolean(lawyer.verified),
+    source: lawyer.source || 'directory',
     profileUrl: lawyer.profileUrl || ''
   };
 }
