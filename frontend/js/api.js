@@ -57,7 +57,7 @@ async function fetchWithTimeout(url, options, timeoutMs = API_REQUEST_TIMEOUT_MS
 }
 
 /* ─── Generic request helper ─── */
-async function apiRequest(method, path, body = null) {
+async function apiRequest(method, path, body = null, timeoutMs = API_REQUEST_TIMEOUT_MS) {
   const options = { method, headers: {} };
 
   if (body instanceof FormData) {
@@ -71,7 +71,7 @@ async function apiRequest(method, path, body = null) {
 
   for (const base of API_BASES) {
     try {
-      const response = await fetchWithTimeout(`${base}${path}`, options);
+      const response = await fetchWithTimeout(`${base}${path}`, options, timeoutMs);
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -305,7 +305,7 @@ export async function matchLoanEligibility(payload) {
 }
 
 export async function evaluatePropertyAgent(payload) {
-  return apiRequest('POST', '/api/agent/evaluate', payload);
+  return apiRequest('POST', '/api/agent/evaluate', payload, 10000);
 }
 
 export async function createLawyerBooking(payload) {

@@ -22,7 +22,6 @@ const __dirname = dirname(__filename);
 // Support both backend/.env and project-root .env as documented in README.
 dotenv.config({ path: join(__dirname, '..', '.env') });
 dotenv.config({ path: join(__dirname, '.env'), override: false });
-await connectDB();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -47,4 +46,8 @@ app.use('/api/agent', agentRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+void connectDB().catch((error) => {
+  console.error('[DB] Unexpected MongoDB bootstrap failure:', error?.message || error);
 });
