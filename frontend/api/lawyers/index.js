@@ -29,10 +29,24 @@ function matchesFilters(lawyer, query) {
   const specialization = String(query.specialization || '').trim().toLowerCase();
   const minRating = Number(query.minRating || 0);
 
+  const specializationNeedles = specialization
+    ? (() => {
+        const needles = [specialization];
+        if (specialization.includes('title deed')) needles.push('title verification', 'title');
+        if (specialization.includes('title verification')) needles.push('title deed', 'title');
+        if (specialization.includes('benami')) needles.push('fraud', 'due diligence');
+        if (specialization.includes('rera')) needles.push('builder');
+        if (specialization.includes('land survey')) needles.push('land', 'patta');
+        if (specialization.includes('civil')) needles.push('litigation', 'dispute');
+        return needles;
+      })()
+    : [];
+
   const cityMatch = !city || city === 'all' || String(lawyer.city || '').toLowerCase() === city;
 
   const specializationText = `${lawyer.specialization || ''}`.toLowerCase();
-  const specializationMatch = !specialization || specializationText.includes(specialization);
+  const specializationMatch =
+    !specialization || specializationNeedles.some((needle) => specializationText.includes(needle));
 
   const ratingMatch = !Number.isFinite(minRating) || minRating <= 0 || Number(lawyer.rating || 0) >= minRating;
 
