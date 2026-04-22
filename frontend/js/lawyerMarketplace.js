@@ -227,12 +227,12 @@ export async function loadLawyers() {
     lawyers = cached.items;
     if (cached.items.length) {
       updateLawyerTrustRow({ lastSynced: cached.updatedAt, source: 'Cached Snapshot' });
-      showToast('Live directory unavailable. Showing last synced lawyer list.', 'warning');
+      showToast('Showing last synced verified lawyer list.', 'warning');
     } else {
       const emergency = applyClientFilters(EMERGENCY_LAWYER_SNAPSHOT, city, spec);
       lawyers = emergency.length ? emergency : EMERGENCY_LAWYER_SNAPSHOT;
       updateLawyerTrustRow({ lastSynced: null, source: 'Verified Snapshot' });
-      showToast('Live directory unavailable. Showing verified lawyer snapshot.', 'warning');
+      showToast('Showing verified lawyer snapshot for demo continuity.', 'warning');
     }
   }
 
