@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { LawyerBooking } from '../models/LawyerBooking.js';
+import { Lawyer } from '../models/Lawyer.js';
 import { successResponse, errorResponse } from '../utils/responses.js';
 import { isDBConnected } from '../config/db.js';
 
@@ -9,19 +10,65 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const fallbackBookings = [];
 
+async function readLawyerFileData() {
+  const lawyersPath = join(__dirname, '../data/lawyers.json');
+  const data = await readFile(lawyersPath, 'utf-8');
+  return JSON.parse(data);
+}
+
+function applyLawyerFilters(lawyers = [], query = {}) {
+  const city = String(query.city || '').trim().toLowerCase();
+  const specialization = String(query.specialization || '').trim().toLowerCase();
+  const minRating = Number(query.minRating || 0);
+  const verifiedOnly = String(query.verifiedOnly || '').toLowerCase() === 'true';
+
+  return lawyers.filter((lawyer) => {
+    const cityMatch = !city || String(lawyer.city || '').toLowerCase() === city;
+
+    const specializationText = `${lawyer.specialization || ''} ${(lawyer.tags || []).join(' ')}`.toLowerCase();
+    const specializationMatch = !specialization || specializationText.includes(specialization);
+
+    const rating = Number(lawyer.rating || 0);
+    const ratingMatch = !Number.isFinite(minRating) || minRating <= 0 || rating >= minRating;
+
+    const verifiedMatch = !verifiedOnly || Boolean(lawyer.verified);
+
+    return cityMatch && specializationMatch && ratingMatch && verifiedMatch;
+  });
+}
+
+function normalizeLawyerRecord(lawyer = {}) {
+  const normalizedId = lawyer.id ?? lawyer._id;
+  return {
+    id: normalizedId,
+    name: lawyer.name,
+    city: lawyer.city,
+    specialization: lawyer.specialization,
+    experience: Number(lawyer.experience || 0),
+    rating: Number(lawyer.rating || 0),
+    fee: Number(lawyer.fee || 0),
+    phone: lawyer.phone || '',
+    barCouncilId: lawyer.barCouncilId || '',
+    verified: Boolean(lawyer.verified),
+    profileUrl: lawyer.profileUrl || ''
+  };
+}
+
 export async function getLawyers(req, res) {
   try {
-    const { city } = req.query;
+    let lawyers = [];
 
-    const lawyersPath = join(__dirname, '../data/lawyers.json');
-    const data = await readFile(lawyersPath, 'utf-8');
-    let lawyers = JSON.parse(data);
-
-    if (city) {
-      lawyers = lawyers.filter(l => l.city.toLowerCase() === city.toLowerCase());
+    if (isDBConnected()) {
+      lawyers = await Lawyer.find({ isActive: true }).lean();
     }
 
-    return successResponse(res, lawyers);
+    if (!lawyers.length) {
+      lawyers = await readLawyerFileData();
+    }
+
+    const filteredLawyers = applyLawyerFilters(lawyers, req.query).map(normalizeLawyerRecord);
+
+    return successResponse(res, filteredLawyers);
   } catch (error) {
     return errorResponse(res, 'Failed to fetch lawyers', 500, error.message);
   }

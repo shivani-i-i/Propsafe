@@ -1,8 +1,28 @@
 /**
  * PropSafe — Lawyer Marketplace Module (Tab 2)
  */
-import { fetchLawyers, getMockLawyers, sendChatMessage, createLawyerBooking, getMockBooking } from './api.js';
+import { fetchLawyers, sendChatMessage, createLawyerBooking, getMockBooking } from './api.js';
 import { showToast } from './toast.js';
+
+const LAWYER_CACHE_KEY = 'propsafe_live_lawyers_v1';
+
+function readLawyerCache() {
+  try {
+    const raw = localStorage.getItem(LAWYER_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeLawyerCache(lawyers = []) {
+  try {
+    localStorage.setItem(LAWYER_CACHE_KEY, JSON.stringify(Array.isArray(lawyers) ? lawyers : []));
+  } catch (_) {
+    // Ignore storage failures.
+  }
+}
 
 const chatHistory = [
   { role: 'assistant', content: 'Hello! Ask me anything about property verification, title deeds, RERA, or fraud prevention in India.' }
@@ -36,10 +56,16 @@ export async function loadLawyers() {
   let lawyers;
   try {
     lawyers = await fetchLawyers(city, spec);
+    writeLawyerCache(lawyers);
     showToast('Lawyers loaded successfully.', 'success');
   } catch (_) {
-    lawyers = getMockLawyers(city, spec);
-    showToast('Backend unavailable. Showing fallback lawyers.', 'warning');
+    const cachedLawyers = readLawyerCache();
+    lawyers = cachedLawyers;
+    if (cachedLawyers.length) {
+      showToast('Live directory unavailable. Showing last synced lawyer list.', 'warning');
+    } else {
+      showToast('Live lawyer directory is currently unavailable.', 'error');
+    }
   }
 
   btn && (btn.disabled = false);
