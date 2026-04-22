@@ -321,7 +321,7 @@ function showBookingModal(name, price, lawyerId) {
   if (existingModal) existingModal.remove();
 
   const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
+  modal.className = 'modal-overlay active';  // ADD 'active' CLASS
   modal.id = 'bookingModal';
   modal.innerHTML = `
     <div class="modal animate-scale-in">
@@ -363,36 +363,56 @@ function showBookingModal(name, price, lawyerId) {
     </div>`;
 
   document.body.appendChild(modal);
+  document.body.style.overflow = 'hidden';  // Prevent body scroll
 
-  modal.querySelector('#cancelBooking').addEventListener('click', () => modal.remove());
-  modal.querySelector('#confirmBooking').addEventListener('click', async () => {
-    const paymentMethod = String(modal.querySelector('#paymentMethod')?.value || 'UPI').toUpperCase();
-    const paymentAmount = Number(modal.querySelector('#paymentAmount')?.value || 0);
+  // Close on Cancel button
+  const cancelBtn = modal.querySelector('#cancelBooking');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      modal.remove();
+      document.body.style.overflow = 'auto';
+    });
+  }
 
-    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
-      showToast('Enter a valid payment amount to continue.', 'warning');
-      return;
+  // Close on overlay click (outside modal)
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+      document.body.style.overflow = 'auto';
     }
+  });
 
-    // For "Pay Later" option, skip Razorpay and create booking directly
-    if (paymentMethod === 'PAY_LATER') {
-      const bookingPayload = {
-        lawyerId,
-        userDetails: {
-          name: 'PropSafe User',
-          phone: '9999999999',
-          email: ''
-        },
-        paymentDetails: {
-          method: paymentMethod,
-          amount: paymentAmount,
-          currency: 'INR',
-          status: 'PENDING',
-          transactionRef: `TXN-${Date.now()}`
-        }
-      };
+  // Confirm & Pay button
+  const confirmBtn = modal.querySelector('#confirmBooking');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', async () => {
+      const paymentMethod = String(modal.querySelector('#paymentMethod')?.value || 'UPI').toUpperCase();
+      const paymentAmount = Number(modal.querySelector('#paymentAmount')?.value || 0);
 
-      let bookingResponse;
+      if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+        showToast('Enter a valid payment amount to continue.', 'warning');
+        return;
+      }
+
+      // For "Pay Later" option, skip Razorpay and create booking directly
+      if (paymentMethod === 'PAY_LATER') {
+        const bookingPayload = {
+          lawyerId,
+          userDetails: {
+            name: 'PropSafe User',
+            phone: '9999999999',
+            email: ''
+          },
+          paymentDetails: {
+            method: paymentMethod,
+            amount: paymentAmount,
+            currency: 'INR',
+            status: 'PENDING',
+            transactionRef: `TXN-${Date.now()}`
+          }
+        };
+
+        let bookingResponse;
       try {
         bookingResponse = await createLawyerBooking(bookingPayload);
         showToast('Booking created. Payment due at consultation.', 'success');
