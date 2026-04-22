@@ -362,6 +362,7 @@ export function getMockLoanOffers(propertyValue, buyerIncome, city) {
 }
 
 export function getMockBooking(payload = {}) {
+  const payment = payload.paymentDetails || {};
   return {
     message: 'Lawyer booking created successfully',
     persisted: false,
@@ -369,6 +370,13 @@ export function getMockBooking(payload = {}) {
       _id: `local-${Date.now()}`,
       lawyerId: payload.lawyerId || 1,
       userDetails: payload.userDetails || { name: 'Guest User', phone: '9999999999', email: '' },
+      paymentDetails: {
+        method: String(payment.method || 'UPI').toUpperCase(),
+        amount: Number(payment.amount || 0),
+        currency: String(payment.currency || 'INR').toUpperCase(),
+        status: String(payment.status || 'INITIATED').toUpperCase(),
+        transactionRef: String(payment.transactionRef || `TXN-${Date.now()}`)
+      },
       bookingTime: new Date().toISOString()
     }
   };

@@ -337,9 +337,28 @@ function showBookingModal(name, price, lawyerId) {
         ✔ Identity verified lawyer&nbsp;&nbsp;·&nbsp;&nbsp;✔ Fixed fee, no hidden charges<br>
         ✔ 7-day money-back guarantee&nbsp;&nbsp;·&nbsp;&nbsp;✔ Consultation in your language
       </div>
+      <div style="background:var(--bg-card-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text-sub);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:10px;">Payment Option</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;">Method</label>
+            <select id="paymentMethod" class="form-control" style="min-height:40px;">
+              <option value="UPI">UPI</option>
+              <option value="CARD">Card</option>
+              <option value="NETBANKING">Net Banking</option>
+              <option value="WALLET">Wallet</option>
+              <option value="PAY_LATER">Pay Later (at consultation)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;">Amount (INR)</label>
+            <input id="paymentAmount" type="number" class="form-control" min="1" step="1" value="${Number(price || 0)}" />
+          </div>
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-outline" style="flex:1;" id="cancelBooking">Cancel</button>
-        <button class="btn btn-primary" style="flex:1;" id="confirmBooking">✔ Confirm Booking</button>
+        <button class="btn btn-primary" style="flex:1;" id="confirmBooking">✔ Confirm & Pay</button>
       </div>
     </div>`;
 
@@ -347,12 +366,27 @@ function showBookingModal(name, price, lawyerId) {
 
   modal.querySelector('#cancelBooking').addEventListener('click', () => modal.remove());
   modal.querySelector('#confirmBooking').addEventListener('click', async () => {
+    const paymentMethod = String(modal.querySelector('#paymentMethod')?.value || 'UPI').toUpperCase();
+    const paymentAmount = Number(modal.querySelector('#paymentAmount')?.value || 0);
+
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      showToast('Enter a valid payment amount to continue.', 'warning');
+      return;
+    }
+
     const bookingPayload = {
       lawyerId,
       userDetails: {
         name: 'PropSafe User',
         phone: '9999999999',
         email: ''
+      },
+      paymentDetails: {
+        method: paymentMethod,
+        amount: paymentAmount,
+        currency: 'INR',
+        status: paymentMethod === 'PAY_LATER' ? 'PENDING' : 'INITIATED',
+        transactionRef: `TXN-${Date.now()}`
       }
     };
 
@@ -368,6 +402,11 @@ function showBookingModal(name, price, lawyerId) {
     const booking = bookingResponse.booking || {};
     const bookingId = booking._id || `BK-${Date.now()}`;
     const bookingTime = new Date(booking.bookingTime || Date.now()).toLocaleString('en-IN');
+    const payment = booking.paymentDetails || bookingPayload.paymentDetails || {};
+    const paymentAmountText = Number(payment.amount || paymentAmount).toLocaleString('en-IN');
+    const paymentMethodText = String(payment.method || paymentMethod).replace(/_/g, ' ');
+    const paymentStatus = String(payment.status || 'INITIATED');
+    const paymentRef = payment.transactionRef || bookingPayload.paymentDetails.transactionRef;
 
     modal.innerHTML = `
       <div class="modal animate-scale-in booking-success-screen">
@@ -376,7 +415,9 @@ function showBookingModal(name, price, lawyerId) {
         <div class="modal-sub">
           <strong>ID:</strong> ${bookingId}<br>
           <strong>Lawyer:</strong> ${name}<br>
-          <strong>Date & Time:</strong> ${bookingTime}
+          <strong>Date & Time:</strong> ${bookingTime}<br>
+          <strong>Payment:</strong> ${paymentMethodText} · INR ${paymentAmountText}<br>
+          <strong>Status:</strong> ${paymentStatus}${paymentRef ? `<br><strong>Txn Ref:</strong> ${paymentRef}` : ''}
         </div>
         <div class="modal-actions" style="margin-top:8px;">
           <button class="btn btn-primary" style="flex:1;" id="downloadReceipt">Download Confirmation</button>
@@ -396,8 +437,11 @@ function showBookingModal(name, price, lawyerId) {
       doc.setFontSize(12);
       doc.text(`Booking ID: ${bookingId}`, 20, 40);
       doc.text(`Lawyer Name: ${name}`, 20, 50);
-      doc.text(`Consultation Fee: ₹${price}`, 20, 60);
-      doc.text(`Booked At: ${bookingTime}`, 20, 70);
+      doc.text(`Consultation Fee: INR ${paymentAmountText}`, 20, 60);
+      doc.text(`Payment Method: ${paymentMethodText}`, 20, 70);
+      doc.text(`Payment Status: ${paymentStatus}`, 20, 80);
+      if (paymentRef) doc.text(`Transaction Ref: ${paymentRef}`, 20, 90);
+      doc.text(`Booked At: ${bookingTime}`, 20, paymentRef ? 100 : 90);
       doc.save(`propsafe-booking-${bookingId}.pdf`);
       showToast('Confirmation downloaded successfully.', 'success');
     });

@@ -5,7 +5,7 @@ module.exports = function handler(req, res) {
   }
 
   try {
-    const { lawyerId, userDetails } = req.body || {};
+    const { lawyerId, userDetails, paymentDetails } = req.body || {};
 
     if (!lawyerId || !userDetails?.name || !userDetails?.phone) {
       return res.status(400).json({
@@ -23,6 +23,13 @@ module.exports = function handler(req, res) {
         name: String(userDetails.name || '').trim(),
         phone: String(userDetails.phone || '').trim(),
         email: String(userDetails.email || '').trim()
+      },
+      paymentDetails: {
+        method: String(paymentDetails?.method || 'UPI').toUpperCase(),
+        amount: Number(paymentDetails?.amount || 0),
+        currency: String(paymentDetails?.currency || 'INR').toUpperCase(),
+        status: String(paymentDetails?.status || 'INITIATED').toUpperCase(),
+        transactionRef: String(paymentDetails?.transactionRef || '').trim()
       },
       bookingTime: new Date().toISOString()
     };

@@ -91,7 +91,7 @@ export async function getLawyers(req, res) {
 
 export async function bookLawyer(req, res) {
   try {
-    const { lawyerId, userDetails } = req.body;
+    const { lawyerId, userDetails, paymentDetails } = req.body;
 
     if (!lawyerId || !userDetails?.name || !userDetails?.phone) {
       return errorResponse(res, 'lawyerId and userDetails (name, phone) are required', 400);
@@ -103,6 +103,13 @@ export async function bookLawyer(req, res) {
         name: String(userDetails.name),
         phone: String(userDetails.phone),
         email: userDetails.email ? String(userDetails.email) : ''
+      },
+      paymentDetails: {
+        method: String(paymentDetails?.method || 'UPI').toUpperCase(),
+        amount: Number(paymentDetails?.amount || 0),
+        currency: String(paymentDetails?.currency || 'INR').toUpperCase(),
+        status: String(paymentDetails?.status || 'INITIATED').toUpperCase(),
+        transactionRef: String(paymentDetails?.transactionRef || '').trim()
       },
       bookingTime: new Date()
     };
